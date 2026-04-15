@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#084433">
+<meta name="description" content="Water Supply Billing Manager">
+<title>💧 Water Supply Manager</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
+<link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgcng9IjI0IiBmaWxsPSIjMDg0NDMzIi8+PHRleHQgeD0iNjQiIHk9IjgwIiBmb250LXNpemU9IjU2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIj7wn5KSIPA8L3RleHQ+PC9zdmc+">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+html{height:100%;overflow:hidden}
+body{font-family:'Outfit',sans-serif;background:#f0f2f1;color:#1a2822;-webkit-tap-highlight-color:transparent;height:100%;overflow:hidden}
+input,select,textarea,button{font-family:inherit}
+
+@media print{body *{visibility:hidden!important}#printArea,#printArea *{visibility:visible!important}
+#printArea{position:fixed!important;top:0;left:0;width:58mm!important;padding:2mm!important;font-size:10px!important;background:#fff!important;color:#000!important;line-height:1.5!important}}
+
+:root{--p:#0d6e52;--pd:#084433;--pl:#e2f3ed;--a:#d97b1e;--al:#fff5e6;--r:#c03028;--rl:#fde8e8;--g:#1a8a54;--gl:#e0f5ea;--m:#6d7e76;--b:#d2ddd7;--bg:#f0f2f1;--c:#fff}
+
+.B{border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 18px;transition:all .1s;font-family:inherit;display:inline-flex;align-items:center;gap:6px;justify-content:center;-webkit-user-select:none;user-select:none}
+.B:active{transform:scale(.96)}
+.Bp{background:var(--p);color:#fff}.Ba{background:var(--a);color:#fff}
+.Bg{background:var(--pl);color:var(--p)}.Br{background:var(--rl);color:var(--r)}
+.Bs{padding:6px 12px;font-size:12px;border-radius:6px}
+
+.C{background:var(--c);border-radius:14px;padding:16px;box-shadow:0 1px 4px rgba(0,0,0,.05)}
+.I{width:100%;padding:10px 14px;border:1.5px solid var(--b);border-radius:8px;font-size:15px;outline:none;transition:border .15s;background:#fff}
+.I:focus{border-color:var(--p)}
+.L{display:block;font-size:11px;font-weight:700;color:var(--m);margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px}
+
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:center;justify-content:center;z-index:1000;padding:10px}
+.md{background:var(--c);border-radius:16px;padding:20px;max-width:500px;width:100%;max-height:88vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.md.w{max-width:680px}
+
+.app-wrap{display:flex;flex-direction:column;height:100vh;height:100dvh}
+.main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
+
+.nav{background:var(--pd);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.nav h1{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px}
+
+.save-bar{background:#fff3cd;color:#856404;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;flex-shrink:0}
+
+.btm{display:flex;background:var(--c);border-top:1px solid var(--b);flex-shrink:0;padding:4px}
+.bt{flex:1;text-align:center;padding:8px 4px;font-weight:600;font-size:11px;cursor:pointer;border:none;background:none;color:var(--m);border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bt.on{background:var(--pl);color:var(--p)}
+.bt .ico{font-size:18px}
+
+@media(min-width:641px){.fr{display:flex;gap:12px}.fr>*{flex:1}}
+
+.rb{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6}
+.rb .s{border-top:1.5px dashed var(--b);margin:6px 0}
+.rb .rw{display:flex;justify-content:space-between}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<script type="text/babel">
+const{useState,useEffect,useCallback}=React;
+
+const ME=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MH=["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितम्बर","अक्टूबर","नवम्बर","दिसम्बर"];
+const CY=new Date().getFullYear();
+const CM=new Date().getMonth(); // 0-indexed
+const KEY="ws-app-v3";
+
+const freshD=()=>({
+  customers:[],receipts:[],nCid:1001,nRid:1,
+  rates:{2015:200,2016:200,2017:250,2018:250,2019:300,2020:300,2021:300,2022:300,2023:350,2024:350,2025:400,2026:400},
+  biz:{name:"वॉटर सप्लाई मदीना दांगी (रोहतक)",phone:"9466755890",addr:"Madina Dangi, Rohtak"}
+});
+
+// Active months: for current year only up to current month, for past years all 12
+function activeMonths(yr){
+  if(yr<CY) return Array.from({length:12},(_,i)=>i);
+  if(yr===CY) return Array.from({length:CM+1},(_,i)=>i);
+  return []; // future year - no months
+}
+
+/* ─── EXCEL I/O ─── */
+function readXL(ab){
+  const wb=XLSX.read(ab,{type:"array"});const D=freshD();
+  const gs=(n)=>wb.SheetNames.includes(n)?XLSX.utils.sheet_to_json(wb.Sheets[n]):[];
+  gs("Settings").forEach(r=>{
+    if(r.Key==="bizName")D.biz.name=r.Value;
+    if(r.Key==="bizPhone")D.biz.phone=String(r.Value);
+    if(r.Key==="bizAddr")D.biz.addr=r.Value;
+    if(r.Key==="nCid")D.nCid=parseInt(r.Value)||1001;
+    if(r.Key==="nRid")D.nRid=parseInt(r.Value)||1;
+    if(String(r.Key).startsWith("rate_")){const y=parseInt(r.Key.split("_")[1]);if(y)D.rates[y]=parseInt(r.Value)||300;}
+  });
+  gs("Customers").forEach(r=>{D.customers.push({id:parseInt(r.ID)||D.nCid++,name:r.Name||"",father:r.FatherName||"",valve:parseInt(r.Valve)||1,conn:String(r.ConnNo||""),phone:String(r.Phone||""),payments:{},created:r.Created||new Date().toISOString()});});
+  gs("Payments").forEach(r=>{const c=D.customers.find(x=>x.id===parseInt(r.CustID));if(!c)return;const y=parseInt(r.Year);if(!y)return;if(!c.payments[y])c.payments[y]={};ME.forEach((m,i)=>{if(parseInt(r[m]))c.payments[y][i]=true;});});
+  gs("Receipts").forEach(r=>{D.receipts.push({no:parseInt(r.No)||0,cid:parseInt(r.CustID)||0,name:r.Name||"",father:r.Father||"",conn:String(r.Conn||""),valve:parseInt(r.Valve)||1,year:parseInt(r.Year)||CY,months:(r.Months||"").split(",").map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)),amt:parseInt(r.Amount)||0,date:r.Date||""});});
+  const mx=D.customers.reduce((m,c)=>Math.max(m,c.id),1000);if(D.nCid<=mx)D.nCid=mx+1;
+  const mr=D.receipts.reduce((m,r)=>Math.max(m,r.no),0);if(D.nRid<=mr)D.nRid=mr+1;
+  return D;
+}
+
+function writeXL(D){
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.customers.map(c=>({ID:c.id,Name:c.name,FatherName:c.father,Valve:c.valve,ConnNo:c.conn,Phone:c.phone,Created:c.created}))),"Customers");
+  const pd=[];D.customers.forEach(c=>{Object.keys(c.payments||{}).forEach(y=>{const row={CustID:c.id,Year:parseInt(y)};ME.forEach((m,i)=>{row[m]=c.payments[y][i]?1:0;});pd.push(row);});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(pd),"Payments");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.receipts.map(r=>({No:r.no,CustID:r.cid,Name:r.name,Father:r.father,Conn:r.conn,Valve:r.valve,Year:r.year,Months:r.months.join(","),Amount:r.amt,Date:r.date}))),"Receipts");
+  const st=[{Key:"bizName",Value:D.biz.name},{Key:"bizPhone",Value:D.biz.phone},{Key:"bizAddr",Value:D.biz.addr},{Key:"nCid",Value:D.nCid},{Key:"nRid",Value:D.nRid}];
+  Object.keys(D.rates).forEach(y=>{st.push({Key:`rate_${y}`,Value:D.rates[y]});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(st),"Settings");
+  ["Customers","Payments","Receipts","Settings"].forEach(n=>{const s=wb.Sheets[n];if(!s||!s["!ref"])return;s["!cols"]=Array.from({length:XLSX.utils.decode_range(s["!ref"]).e.c+1},()=>({wch:15}));});
+  return wb;
+}
+
+function dlXL(D){XLSX.writeFile(writeXL(D),`WaterSupply_${new Date().toISOString().slice(0,10)}.xlsx`);}
+
+// Auto-save to localStorage as backup
+function autoSave(D){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}}
+function autoLoad(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch{return null;}}
+
+/* ─── UI Components ─── */
+function Modal({open,onClose,title,wide,children}){
+  if(!open)return null;
+  return <div className="ov" onClick={onClose}><div className={`md ${wide?"w":""}`} onClick={e=>e.stopPropagation()}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+      <h3 style={{fontSize:16,color:"var(--pd)"}}>{title}</h3>
+      <button className="B Bg Bs" onClick={onClose}>✕</button>
+    </div>{children}</div></div>;
+}
+function Fld({label,children,s}){return <div style={{marginBottom:10,...s}}><label className="L">{label}</label>{children}</div>;}
+
+function Rcpt({r,c,biz,rate}){
+  if(!r||!c)return null;
+  return <div className="rb" id="printArea">
+    <div style={{textAlign:"center",marginBottom:2}}>
+      <div style={{fontSize:13,fontWeight:800}}>{biz.name}</div>
+      <div style={{fontSize:9,color:"var(--m)"}}>{biz.addr} | M: {biz.phone}</div>
+    </div>
+    <div className="s"/>
+    <div className="rw"><span>रसीद नं / Receipt:</span><strong>#{String(r.no).padStart(6,"0")}</strong></div>
+    <div className="rw"><span>दिनांक / Date:</span><span>{new Date(r.date).toLocaleDateString("hi-IN")}</span></div>
+    <div className="s"/>
+    <div className="rw"><span>ID:</span><span>C-{c.id}</span></div>
+    <div className="rw"><span>नाम / Name:</span><span>{c.name}</span></div>
+    <div className="rw"><span>पिता / S/o D/o:</span><span>{c.father||"—"}</span></div>
+    <div className="rw"><span>वॉल / Valve:</span><span>#{c.valve}</span></div>
+    <div className="rw"><span>कनेक्शन / Conn:</span><span>#{c.conn}</span></div>
+    {c.phone&&<div className="rw"><span>Phone:</span><span>{c.phone}</span></div>}
+    <div className="s"/>
+    <div style={{fontSize:10,fontWeight:700,marginBottom:3}}>भुगतान / Payment — {r.year}</div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:2,marginBottom:4}}>
+      {r.months.map(m=><span key={m} style={{background:"var(--gl)",color:"var(--g)",padding:"1px 5px",borderRadius:3,fontSize:9,fontWeight:600}}>{ME[m]} ({MH[m]})</span>)}
+    </div>
+    <div className="s"/>
+    <div className="rw"><span>दर / Rate:</span><span>₹{rate}/month</span></div>
+    <div className="rw"><span>महीने / Months:</span><span>{r.months.length}</span></div>
+    <div className="rw" style={{fontSize:14,fontWeight:800,marginTop:3}}><span>कुल / Total:</span><span>₹{r.amt}</span></div>
+    <div className="s"/>
+    <div style={{display:"flex",justifyContent:"space-between",fontSize:8,marginTop:2}}><span>जमा: ₹{r.amt}</span><span>हस्ताक्षर: ____________</span></div>
+    <div style={{textAlign:"center",fontSize:8,color:"var(--m)",marginTop:5}}>धन्यवाद • Thank you</div>
+  </div>;
+}
+
+/* ─── MAIN APP ─── */
+function App(){
+  const[D,setD]=useState(null);
+  const[dirty,setDirty]=useState(false);
+  const[tab,setTab]=useState("dash");
+  const[valve,setValve]=useState(null);
+  const[cid,setCid]=useState(null);
+  const[year,setYear]=useState(CY);
+  const[search,setSearch]=useState("");
+  const[modal,setModal]=useState(null);
+  const[form,setForm]=useState({});
+  const[recD,setRecD]=useState(null);
+  const[payM,setPayM]=useState([]);
+  const[impTxt,setImpTxt]=useState("");
+  const[impV,setImpV]=useState(1);
+
+  useEffect(()=>{const h=e=>{if(dirty){e.preventDefault();e.returnValue="";}};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[dirty]);
+
+  const upd=useCallback(nd=>{const c={...nd};setD(c);setDirty(true);autoSave(c);},[]);
+  const rt=(y)=>D?.rates?.[y]||300;
+  const cu=(id)=>D?.customers?.find(c=>c.id===id);
+  const vc=(v)=>D?.customers?.filter(c=>c.valve===v)||[];
+  const allV=Array.from({length:10},(_,i)=>i+1);
+  const am=activeMonths(year); // months available for selected year
+
+  const onLoad=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=readXL(new Uint8Array(ev.target.result));setD(d);setDirty(false);autoSave(d);setTab("dash");}catch(err){alert("❌ Error: "+err.message);}};r.readAsArrayBuffer(f);};
+  const onSave=()=>{if(!D)return;dlXL(D);setDirty(false);};
+  const onNew=()=>{const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");};
+  const onRecover=()=>{const d=autoLoad();if(d){setD(d);setDirty(true);setTab("dash");}else alert("No backup found");};
+
+  const addCust=()=>{if(!form.name?.trim())return;const vn=parseInt(form.valveNo)||1;D.customers.push({id:D.nCid,name:form.name.trim(),father:(form.father||"").trim(),valve:vn,conn:(form.conn||"").trim()||`V${vn}-${D.nCid}`,phone:(form.phone||"").trim(),payments:{},created:new Date().toISOString()});D.nCid++;upd(D);setModal(null);setForm({});};
+  const editCust=()=>{const c=cu(cid);if(!c)return;if(form.name)c.name=form.name;if(form.father!==undefined)c.father=form.father;if(form.phone!==undefined)c.phone=form.phone;if(form.valveNo)c.valve=parseInt(form.valveNo);if(form.conn)c.conn=form.conn;upd(D);setModal(null);};
+  const delCust=(id)=>{if(!confirm("Delete C-"+id+"?"))return;D.customers=D.customers.filter(c=>c.id!==id);D.receipts=D.receipts.filter(r=>r.cid!==id);upd(D);if(cid===id){setCid(null);setTab(valve?"valve":"dash");}};
+  const togPay=(id,m)=>{const c=cu(id);if(!c)return;if(!c.payments[year])c.payments[year]={};c.payments[year][m]=!c.payments[year][m];upd(D);};
+
+  const collect=()=>{
+    if(!payM.length)return;const c=cu(cid);if(!c)return;
+    if(!c.payments[year])c.payments[year]={};
+    payM.forEach(m=>{c.payments[year][m]=true;});
+    const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,year,months:[...payM].sort((a,b)=>a-b),amt:payM.length*rt(year),date:new Date().toISOString()};
+    D.nRid++;D.receipts.push(r);upd(D);setRecD(r);setPayM([]);setModal("receipt");
+  };
+
+  const doImport=()=>{const lines=impTxt.trim().split("\n").filter(l=>l.trim());let n=0;const vn=parseInt(impV)||1;
+    lines.forEach(l=>{const p=l.split(/[,\t]+/).map(s=>s.trim());if(!p[0])return;D.customers.push({id:D.nCid++,name:p[0],father:p[1]||"",valve:vn,conn:p[3]||`V${vn}-${D.nCid-1}`,phone:p[2]||"",payments:{},created:new Date().toISOString()});n++;});
+    upd(D);alert(`✅ ${n} customers → Valve #${vn}`);setImpTxt("");setModal(null);};
+
+  const sr=search.trim()?(()=>{
+    const q=search.toLowerCase().trim();
+    if(/^[r#]?\d{1,}$/i.test(q)){const n=parseInt(q.replace(/\D/g,""));const rs=D.receipts.filter(r=>r.no===n);if(rs.length)return{t:"r",i:rs};}
+    return{t:"c",i:D.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.father||"").toLowerCase().includes(q)||String(c.id).includes(q)||c.conn.toLowerCase().includes(q)||(c.phone||"").includes(q))};
+  })():null;
+
+  /* ─── WELCOME ─── */
+  if(!D){
+    const hasBackup=!!autoLoad();
+    return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#084433 0%,#0d6e52 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
+      <div style={{textAlign:"center",maxWidth:380,width:"100%"}}>
+        <div style={{fontSize:56,marginBottom:12}}>💧</div>
+        <h1 style={{color:"#fff",fontSize:24,fontWeight:800,marginBottom:4}}>Water Supply Manager</h1>
+        <p style={{color:"rgba(255,255,255,.5)",fontSize:13,marginBottom:28}}>वॉटर सप्लाई बिलिंग सिस्टम</p>
+        <div style={{display:"flex",flexDirection:"column",gap:10}}>
+          <label className="B Ba" style={{fontSize:15,padding:"14px 20px",cursor:"pointer",width:"100%"}}>
+            📂 Open Excel File<input type="file" accept=".xlsx,.xls" onChange={onLoad} style={{display:"none"}}/>
+          </label>
+          <button className="B Bp" style={{fontSize:15,padding:"14px 20px",width:"100%"}} onClick={onNew}>✨ Start New</button>
+          {hasBackup&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onRecover}>🔄 Recover Last Session</button>}
+        </div>
+        <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data saved in Excel file on YOUR device.<br/>Auto-backup in browser between saves.</p>
+      </div>
+    </div>;
+  }
+
+  const tC=D.customers.length;
+  const tCol=D.customers.reduce((s,c)=>{const p=c.payments?.[year]||{};return s+Object.values(p).filter(Boolean).length*rt(year);},0);
+  const curUnp=D.customers.filter(c=>!(c.payments?.[year]||{})[CM]).length;
+
+  // Unpaid months for a customer in selected year
+  const unpaidMonths=(c)=>{const p=c.payments?.[year]||{};return am.filter(i=>!p[i]);};
+  const paidMonths=(c)=>{const p=c.payments?.[year]||{};return am.filter(i=>!!p[i]);};
+
+  const YB=({v,fn})=><div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+    {Array.from({length:CY-2014},(_,i)=>2015+i).map(y=><button key={y} onClick={()=>{fn(y);setPayM([]);}} className={`B Bs ${v===y?"Bp":"Bg"}`} style={{padding:"3px 9px",fontSize:11}}>{y}</button>)}</div>;
+
+  const goTo=(t,v,c)=>{setTab(t);if(v!==undefined)setValve(v);if(c!==undefined)setCid(c);setPayM([]);};
+
+  /* ─── DASHBOARD ─── */
+  const Dash=()=><div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+    <div style={{marginBottom:6}}>
+      <h2 style={{fontSize:17,color:"var(--pd)"}}>{D.biz.name}</h2>
+      <p style={{fontSize:11,color:"var(--m)"}}>📞 {D.biz.phone}</p>
+    </div>
+    <YB v={year} fn={setYear}/>
+    <div style={{fontSize:11,color:"var(--m)",marginBottom:8}}>₹{rt(year)}/mo • {am.length} months ({ME[am[0]]}–{ME[am[am.length-1]||0]}) {year===CY&&"(till now)"}</div>
+
+    <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
+      {[{n:tC,l:"Connections",c:"var(--p)"},{n:`₹${tCol.toLocaleString()}`,l:"Collected",c:"var(--g)"},{n:curUnp,l:`Unpaid ${ME[CM]}`,c:"var(--r)"}].map((s,i)=>
+        <div key={i} style={{flex:"1 1 100px",minWidth:100,padding:"12px",borderRadius:12,background:"var(--c)",boxShadow:"0 1px 3px rgba(0,0,0,.04)",borderLeft:`4px solid ${s.c}`}}>
+          <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.n}</div>
+          <div style={{fontSize:10,color:"var(--m)",fontWeight:600,textTransform:"uppercase",marginTop:1}}>{s.l}</div>
+        </div>)}
+    </div>
+
+    <div style={{position:"relative",marginBottom:12}}>
+      <input className="I" placeholder="🔍 Name, C-ID, phone, receipt #..." value={search} onChange={e=>setSearch(e.target.value)} style={{fontSize:13}}/>
+      {sr&&search.trim()&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--c)",borderRadius:10,marginTop:4,boxShadow:"0 6px 24px rgba(0,0,0,.12)",maxHeight:240,overflowY:"auto",zIndex:50}}>
+        {sr.i.length===0&&<div style={{padding:12,textAlign:"center",color:"var(--m)",fontSize:13}}>No results</div>}
+        {sr.t==="c"&&sr.i.slice(0,15).map(c=><div key={c.id} onClick={()=>{goTo("cust",c.valve,c.id);setSearch("");}} style={{padding:"8px 12px",borderBottom:"1px solid var(--b)",cursor:"pointer"}}>
+          <div style={{fontWeight:600,fontSize:13}}><span style={{color:"var(--m)",fontSize:11}}>C-{c.id}</span> {c.name}</div>
+          <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"} • V{c.valve} • #{c.conn}</div>
+        </div>)}
+        {sr.t==="r"&&sr.i.map(r=><div key={r.no} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");setSearch("");}} style={{padding:"8px 12px",borderBottom:"1px solid var(--b)",cursor:"pointer"}}>
+          <div style={{fontWeight:600}}>#{String(r.no).padStart(6,"0")} <span style={{fontWeight:400,color:"var(--m)",fontSize:11}}>₹{r.amt} • {r.name}</span></div>
+        </div>)}
+      </div>}
+    </div>
+
+    <h3 style={{fontSize:14,marginBottom:6,color:"var(--pd)"}}>Valves / वॉल</h3>
+    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:12}}>
+      {allV.map(v=>{const cs=vc(v);const paid=cs.filter(c=>(c.payments?.[year]||{})[CM]).length;
+        return <div key={v} className="C" onClick={()=>goTo("valve",v)} style={{cursor:"pointer",borderTop:"3px solid var(--p)",padding:12}}>
+          <div style={{fontSize:22,fontWeight:800,color:"var(--p)"}}>V-{v}</div>
+          <div style={{fontSize:11,color:"var(--m)"}}>{cs.length} conn</div>
+          <div style={{fontSize:10,marginTop:4}}><span style={{color:"var(--g)",fontWeight:600}}>{paid}✓</span>{cs.length-paid>0&&<span style={{color:"var(--r)",fontWeight:600,marginLeft:4}}>{cs.length-paid}✗</span>}</div>
+        </div>;})}
+    </div>
+    <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
+      <button className="B Bp" onClick={()=>{setForm({valveNo:1});setModal("addC");}}>+ Customer</button>
+      <button className="B Ba" onClick={()=>setModal("import")}>📥 Import</button>
+      <button className="B Bg" onClick={()=>setModal("rates")}>💰 Rates</button>
+      <button className="B Bg" onClick={()=>setModal("settings")}>⚙️</button>
+    </div>
+  </div>;
+
+  /* ─── COLLECT TAB (Monthly Collection) ─── */
+  const Collect=()=>{
+    // Show all customers with unpaid months for current month
+    const unpaid=D.customers.filter(c=>!(c.payments?.[CY]||{})[CM]);
+    const paid=D.customers.filter(c=>(c.payments?.[CY]||{})[CM]);
+    return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+      <h2 style={{fontSize:17,color:"var(--pd)",marginBottom:2}}>📋 Collect — {ME[CM]} {CY}</h2>
+      <p style={{fontSize:11,color:"var(--m)",marginBottom:10}}>₹{rt(CY)}/mo • {unpaid.length} unpaid • {paid.length} paid</p>
+
+      {unpaid.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--g)"}}>✅ All collected for {ME[CM]}!</div>:
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {unpaid.map(c=>{
+          return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:"4px solid var(--r)"}}>
+            <button className="B Ba Bs" onClick={()=>{
+              // Quick collect current month
+              if(!c.payments[CY])c.payments[CY]={};
+              c.payments[CY][CM]=true;
+              const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,year:CY,months:[CM],amt:rt(CY),date:new Date().toISOString()};
+              D.nRid++;D.receipts.push(r);upd(D);setRecD(r);setCid(c.id);setModal("receipt");
+            }}>₹{rt(CY)}</button>
+            <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",c.valve,c.id)}>
+              <div style={{fontWeight:700,fontSize:13}}>C-{c.id} • {c.name}</div>
+              <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"} • V{c.valve} {c.phone&&`📞${c.phone}`}</div>
+            </div>
+            <div style={{fontSize:10,color:"var(--r)",fontWeight:600}}>V-{c.valve}</div>
+          </div>;})}
+      </div>}
+
+      {paid.length>0&&<>
+        <h3 style={{fontSize:13,color:"var(--g)",marginTop:14,marginBottom:6}}>✅ Paid ({paid.length})</h3>
+        <div style={{display:"flex",flexDirection:"column",gap:3}}>
+          {paid.map(c=><div key={c.id} style={{padding:"6px 10px",background:"var(--gl)",borderRadius:8,fontSize:12,display:"flex",justifyContent:"space-between",cursor:"pointer"}} onClick={()=>goTo("cust",c.valve,c.id)}>
+            <span>C-{c.id} • {c.name} <span style={{color:"var(--m)"}}>V{c.valve}</span></span>
+            <span style={{color:"var(--g)",fontWeight:600}}>✅ ₹{rt(CY)}</span>
+          </div>)}
+        </div>
+      </>}
+    </div>;
+  };
+
+  /* ─── VALVE VIEW ─── */
+  const VView=()=>{const cs=vc(valve);return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+      <div><h2 style={{fontSize:17,color:"var(--pd)"}}>Valve #{valve}</h2><p style={{fontSize:11,color:"var(--m)"}}>{cs.length} connections</p></div>
+      <button className="B Bp Bs" onClick={()=>{setForm({valveNo:valve});setModal("addC");}}>+ Add</button>
+    </div>
+    <YB v={year} fn={setYear}/>
+    {cs.length===0?<div className="C" style={{textAlign:"center",padding:24,color:"var(--m)"}}>Empty</div>:
+      <div style={{display:"flex",flexDirection:"column",gap:5}}>
+        {cs.map(c=>{const pd=paidMonths(c).length;const up=unpaidMonths(c).length;const pN=!!(c.payments?.[year]||{})[CM];
+          return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:`4px solid ${pN||year<CY&&up===0?"var(--g)":"var(--r)"}`}}>
+            {year===CY&&<button className={`B Bs ${pN?"Bg":"Br"}`} style={{fontSize:14,minWidth:36}} onClick={()=>togPay(c.id,CM)}>{pN?"✅":"❌"}</button>}
+            <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",valve,c.id)}>
+              <div style={{fontWeight:700,fontSize:13}}>C-{c.id} {c.name}</div>
+              <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"}</div>
+            </div>
+            <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:700,color:up>0?"var(--r)":"var(--g)"}}>{pd}/{am.length}</div><div style={{fontSize:9,color:"var(--m)"}}>₹{pd*rt(year)}</div></div>
+          </div>;})}
+      </div>}
+  </div>;};
+
+  /* ─── CUSTOMER VIEW ─── */
+  const CView=()=>{
+    const c=cu(cid);if(!c)return <div style={{padding:20,textAlign:"center"}}>Not found</div>;
+    const p=c.payments?.[year]||{};const pd=paidMonths(c);const up=unpaidMonths(c);
+    const cR=D.receipts.filter(r=>r.cid===c.id).sort((a,b)=>b.no-a.no);
+    const aY=Object.keys(c.payments).sort();
+
+    return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+      <div className="C" style={{marginBottom:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
+          <div>
+            <div style={{fontSize:10,color:"var(--m)",fontWeight:700}}>C-{c.id} • V#{c.valve} • #{c.conn}</div>
+            <h2 style={{fontSize:18,color:"var(--pd)",margin:"2px 0"}}>{c.name}</h2>
+            <div style={{fontSize:12,color:"var(--m)"}}>पिता: <strong>{c.father||"—"}</strong></div>
+            {c.phone&&<div style={{fontSize:12,color:"var(--m)"}}>📞 {c.phone}</div>}
+          </div>
+          <div style={{display:"flex",gap:4}}><button className="B Bg Bs" onClick={()=>{setForm({name:c.name,father:c.father,phone:c.phone,valveNo:c.valve,conn:c.conn});setModal("editC");}}>✏️</button><button className="B Br Bs" onClick={()=>delCust(c.id)}>🗑</button></div>
+        </div>
+      </div>
+      <YB v={year} fn={setYear}/>
+      <div style={{fontSize:11,color:"var(--m)",marginBottom:6}}>₹{rt(year)}/mo • {am.length} months active • Paid: <strong style={{color:"var(--g)"}}>{pd.length}</strong> • Due: <strong style={{color:"var(--r)"}}>{up.length} (₹{up.length*rt(year)})</strong></div>
+
+      {/* Only show active months */}
+      <div style={{display:"grid",gridTemplateColumns:`repeat(${am.length<=6?3:4},1fr)`,gap:5,marginBottom:12}}>
+        {am.map(i=>{const isPaid=!!p[i];return <button key={i} className="B" onClick={()=>togPay(c.id,i)} style={{flexDirection:"column",gap:1,padding:"8px 3px",borderRadius:8,background:isPaid?"var(--gl)":"var(--rl)",color:isPaid?"var(--g)":"var(--r)",border:isPaid?"2px solid var(--g)":"2px solid transparent",fontSize:11}}>
+          <span style={{fontSize:9,fontWeight:700}}>{ME[i]}</span><span style={{fontSize:14}}>{isPaid?"✅":"❌"}</span>
+        </button>;})}
+      </div>
+
+      {/* Collect unpaid */}
+      {up.length>0&&<div className="C" style={{marginBottom:8}}>
+        <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>💰 Collect Payment</h4>
+        <p style={{fontSize:10,color:"var(--m)",marginBottom:6}}>Select months to collect:</p>
+        <div style={{display:"flex",flexWrap:"wrap",gap:3,marginBottom:8}}>
+          {up.map(i=>{const sel=payM.includes(i);return <button key={i} className={`B Bs ${sel?"Bp":"Bg"}`} onClick={()=>setPayM(prev=>sel?prev.filter(x=>x!==i):[...prev,i])}>{ME[i]}</button>;})}
+          <button className="B Bs Ba" onClick={()=>setPayM([...up])} style={{fontSize:10}}>Select All</button>
+        </div>
+        {payM.length>0&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--al)",borderRadius:10,padding:"8px 12px",flexWrap:"wrap",gap:6}}>
+          <div><div style={{fontSize:12,fontWeight:600}}>{payM.length} × ₹{rt(year)}</div><div style={{fontSize:18,fontWeight:800,color:"var(--a)"}}>₹{payM.length*rt(year)}</div></div>
+          <button className="B Ba" onClick={collect}>🧾 Collect & Receipt</button>
+        </div>}
+      </div>}
+      {up.length===0&&<div style={{background:"var(--gl)",borderRadius:10,padding:12,textAlign:"center",marginBottom:8,color:"var(--g)",fontWeight:600,fontSize:13}}>✅ All months paid for {year}!</div>}
+
+      {/* Receipts */}
+      <div className="C" style={{marginBottom:8}}>
+        <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>🧾 Receipts ({cR.length})</h4>
+        {cR.length===0?<p style={{fontSize:11,color:"var(--m)"}}>None yet</p>:
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            {cR.slice(0,10).map(r=><div key={r.no} onClick={()=>{setRecD(r);setModal("receipt");}} style={{display:"flex",justifyContent:"space-between",padding:"6px 8px",background:"var(--bg)",borderRadius:6,cursor:"pointer",fontSize:12}}>
+              <div><strong>#{String(r.no).padStart(6,"0")}</strong> <span style={{color:"var(--m)",fontSize:10}}>{new Date(r.date).toLocaleDateString("hi-IN")}</span></div>
+              <div><span style={{fontSize:10,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{String(r.year).slice(2)}</span> <strong style={{color:"var(--g)"}}>₹{r.amt}</strong></div>
+            </div>)}
+          </div>}
+      </div>
+
+      {/* Lifetime */}
+      {aY.length>0&&<div className="C">
+        <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>📊 History</h4>
+        {aY.map(y=>{const yp=c.payments[y]||{};const pc=Object.values(yp).filter(Boolean).length;const tot=y==CY?am.length:12;
+          return <div key={y} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:"1px solid var(--b)"}}>
+            <strong style={{minWidth:36,fontSize:12}}>{y}</strong>
+            <div style={{flex:1,background:"var(--bg)",borderRadius:5,height:14,overflow:"hidden"}}><div style={{height:"100%",width:`${(pc/tot)*100}%`,background:"var(--g)",borderRadius:5}}/></div>
+            <span style={{fontSize:11,fontWeight:600,minWidth:36,textAlign:"right"}}>{pc}/{tot}</span>
+            <span style={{fontSize:10,color:"var(--g)",fontWeight:600,minWidth:48,textAlign:"right"}}>₹{pc*rt(parseInt(y))}</span>
+          </div>;})}
+      </div>}
+    </div>;
+  };
+
+  /* ─── RECEIPTS TAB ─── */
+  const RView=()=>{const recs=D.receipts.sort((a,b)=>b.no-a.no);
+    return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+      <h2 style={{fontSize:17,color:"var(--pd)",marginBottom:2}}>🧾 All Receipts</h2>
+      <p style={{fontSize:11,color:"var(--m)",marginBottom:8}}>{recs.length} total</p>
+      {recs.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--m)"}}>None</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:4}}>
+          {recs.slice(0,50).map(r=><div key={r.no} className="C" style={{padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");}}>
+            <div><div style={{fontWeight:700,fontSize:13}}>#{String(r.no).padStart(6,"0")}</div><div style={{fontSize:10,color:"var(--m)"}}>{r.name} • V{r.valve}</div></div>
+            <div style={{textAlign:"right"}}><div style={{fontWeight:700,color:"var(--g)"}}>₹{r.amt}</div><div style={{fontSize:9,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{ String(r.year).slice(2)} • {new Date(r.date).toLocaleDateString("hi-IN")}</div></div>
+          </div>)}
+        </div>}
+    </div>;
+  };
+
+  /* ─── RENDER ─── */
+  return <div className="app-wrap">
+    <div className="nav">
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {(tab==="valve"||tab==="cust")&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={()=>{if(tab==="cust"){setCid(null);setTab(valve?"valve":"dash");}else{setValve(null);setTab("dash");}}}>←</button>}
+        <h1>💧 Water Supply</h1>
+      </div>
+      <button className="B Bs" style={{background:dirty?"#ffc107":"rgba(255,255,255,.15)",color:dirty?"#000":"#fff",fontWeight:dirty?800:600}} onClick={onSave}>💾{dirty?" SAVE*":""}</button>
+    </div>
+
+    {dirty&&<div className="save-bar"><span>⚠️ Unsaved</span><button className="B Bs Ba" onClick={onSave}>💾 Save Excel</button></div>}
+
+    <div className="main-scroll">
+      {tab==="dash"&&<Dash/>}
+      {tab==="collect"&&<Collect/>}
+      {tab==="valve"&&<VView/>}
+      {tab==="cust"&&<CView/>}
+      {tab==="receipts"&&<RView/>}
+    </div>
+
+    {/* Bottom Nav */}
+    {tab!=="cust"&&tab!=="valve"&&<div className="btm">
+      <button className={`bt ${tab==="dash"?"on":""}`} onClick={()=>setTab("dash")}><span className="ico">📊</span>Dashboard</button>
+      <button className={`bt ${tab==="collect"?"on":""}`} onClick={()=>setTab("collect")}><span className="ico">💰</span>Collect</button>
+      <button className={`bt ${tab==="receipts"?"on":""}`} onClick={()=>setTab("receipts")}><span className="ico">🧾</span>Receipts</button>
+    </div>}
+
+    {/* ─── MODALS ─── */}
+    <Modal open={modal==="addC"} onClose={()=>setModal(null)} title="➕ Add Customer">
+      <div className="fr"><Fld label="Name / नाम *"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name"/></Fld><Fld label="Father / पिता"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})} placeholder="s/o d/o"/></Fld></div>
+      <div className="fr"><Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld><Fld label="Conn No (auto)"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld></div>
+      <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
+      <button className="B Bp" style={{width:"100%",marginTop:4}} onClick={addCust}>Add Customer</button>
+    </Modal>
+
+    <Modal open={modal==="editC"} onClose={()=>setModal(null)} title="✏️ Edit">
+      <div className="fr"><Fld label="Name"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></Fld><Fld label="Father"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})}/></Fld></div>
+      <div className="fr"><Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld><Fld label="Conn"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld></div>
+      <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
+      <button className="B Bp" style={{width:"100%",marginTop:4}} onClick={editCust}>Save</button>
+    </Modal>
+
+    <Modal open={modal==="receipt"} onClose={()=>{setModal(null);setRecD(null);}} title="🧾 Receipt">
+      {recD&&<Rcpt r={recD} c={cu(recD.cid)} biz={D.biz} rate={rt(recD.year)}/>}
+      <button className="B Ba" style={{width:"100%",marginTop:8}} onClick={()=>window.print()}>🖨️ Print</button>
+    </Modal>
+
+    <Modal open={modal==="import"} onClose={()=>setModal(null)} title="📥 Bulk Import" wide>
+      <div style={{background:"var(--pl)",borderRadius:8,padding:10,marginBottom:10,fontSize:11,lineHeight:1.7}}>
+        One per line: <code style={{background:"#fff",padding:"1px 4px",borderRadius:3}}>Name, Father, Phone, ConnNo</code> (only Name required)
+      </div>
+      <Fld label="To Valve"><select className="I" value={impV} onChange={e=>setImpV(e.target.value)}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
+      <Fld label="Paste Data"><textarea className="I" rows={6} value={impTxt} onChange={e=>setImpTxt(e.target.value)} placeholder={"राजेश, राम पाल, 9876543210\nसुरेश, मोहन लाल"} style={{resize:"vertical",fontFamily:"monospace",fontSize:11}}/></Fld>
+      <button className="B Ba" style={{width:"100%"}} onClick={doImport}>📥 Import</button>
+    </Modal>
+
+    <Modal open={modal==="rates"} onClose={()=>setModal(null)} title="💰 Yearly Rates">
+      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
+        {Array.from({length:CY-2014},(_,i)=>2015+i).map(y=>
+          <Fld key={y} label={y} s={{marginBottom:4}}><input className="I" type="number" value={D.rates[y]||""} style={{padding:"7px 8px",fontSize:13}} onChange={e=>{D.rates[y]=parseInt(e.target.value)||0;upd(D);}}/></Fld>
+        )}
+      </div>
+    </Modal>
+
+    <Modal open={modal==="settings"} onClose={()=>setModal(null)} title="⚙️ Settings">
+      <Fld label="Business Name"><input className="I" value={D.biz.name} onChange={e=>{D.biz.name=e.target.value;upd(D);}}/></Fld>
+      <Fld label="Phone"><input className="I" value={D.biz.phone} onChange={e=>{D.biz.phone=e.target.value;upd(D);}}/></Fld>
+      <Fld label="Address"><input className="I" value={D.biz.addr} onChange={e=>{D.biz.addr=e.target.value;upd(D);}}/></Fld>
+      <div style={{borderTop:"1px solid var(--b)",paddingTop:10,marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
+        <label className="B Ba" style={{width:"100%",cursor:"pointer"}}><span>📂 Load Different File</span><input type="file" accept=".xlsx,.xls" onChange={e=>{if(dirty&&!confirm("Unsaved changes lost?"))return;onLoad(e);setModal(null);}} style={{display:"none"}}/></label>
+        <button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("⚠️ DELETE ALL?")){const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");setModal(null);}}}>🗑 Reset</button>
+      </div>
+    </Modal>
+  </div>;
+}
+
+ReactDOM.createRoot(document.getElementById("app")).render(<App/>);
+</script>
+</body>
+</html>
