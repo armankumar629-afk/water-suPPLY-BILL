@@ -62,6 +62,7 @@ input,select,textarea,button{font-family:inherit}
 <body>
 <div id="app"></div>
 <script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -127,6 +128,35 @@ function dlXL(D){XLSX.writeFile(writeXL(D),`WaterSupply_${new Date().toISOString
 function autoSave(D){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}}
 function autoLoad(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch{return null;}}
 
+/* ─── GOOGLE DRIVE SYNC ─── */
+const GDR_CID='PASTE_YOUR_CLIENT_ID_HERE';
+const GDR_SCOPE='https://www.googleapis.com/auth/drive.appdata';
+const GDR_FNAME='water-supply-data.json';
+let _gTok=null,_gFid=null;
+
+async function gFindFile(){
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${GDR_FNAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${_gTok}`}});
+  const d=await r.json();_gFid=d.files?.[0]?.id||null;return _gFid;
+}
+async function gRead(){
+  await gFindFile();if(!_gFid)return null;
+  const r=await fetch(`https://www.googleapis.com/drive/v3/files/${_gFid}?alt=media`,{headers:{Authorization:`Bearer ${_gTok}`}});
+  return r.ok?r.json():null;
+}
+async function gWrite(data){
+  const body=JSON.stringify(data);
+  if(_gFid){
+    await fetch(`https://www.googleapis.com/upload/drive/v3/files/${_gFid}?uploadType=media`,{method:'PATCH',headers:{Authorization:`Bearer ${_gTok}`,'Content-Type':'application/json'},body});
+  }else{
+    const meta=JSON.stringify({name:GDR_FNAME,parents:['appDataFolder']});
+    const fm=new FormData();
+    fm.append('metadata',new Blob([meta],{type:'application/json'}));
+    fm.append('file',new Blob([body],{type:'application/json'}));
+    const r=await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id',{method:'POST',headers:{Authorization:`Bearer ${_gTok}`},body:fm});
+    _gFid=(await r.json()).id;
+  }
+}
+
 /* ─── UI Components ─── */
 function Modal({open,onClose,title,wide,children}){
   if(!open)return null;
@@ -185,9 +215,46 @@ function App(){
   const[payM,setPayM]=useState([]);
   const[impTxt,setImpTxt]=useState("");
   const[impV,setImpV]=useState(1);
+  const[driveStatus,setDriveStatus]=useState(localStorage.getItem('gDrConn')?'connecting':'idle');
+  const tcRef=React.useRef(null);
+  const syncTimer=React.useRef(null);
 
+  const upd=useCallback(nd=>{
+    const c={...nd};setD(c);setDirty(true);autoSave(c);
+    if(_gTok){
+      setDriveStatus('syncing');
+      clearTimeout(syncTimer.current);
+      syncTimer.current=setTimeout(async()=>{try{await gWrite(c);setDriveStatus('synced');}catch{setDriveStatus('error');}},1500);
+    }
+  },[]);
+  useEffect(()=>{
+    if(GDR_CID.includes('PASTE'))return;
+    const init=()=>{
+      if(!window.google?.accounts?.oauth2)return false;
+      tcRef.current=google.accounts.oauth2.initTokenClient({
+        client_id:GDR_CID,scope:GDR_SCOPE,
+        callback:async(resp)=>{
+          if(resp.error){setDriveStatus('error');return;}
+          _gTok=resp.access_token;
+          setDriveStatus('syncing');
+          try{
+            const remote=await gRead();
+            if(remote){setD(remote);autoSave(remote);}
+            else{const cur=autoLoad();if(cur)await gWrite(cur);}
+            localStorage.setItem('gDrConn','1');
+            setDriveStatus('synced');
+          }catch{setDriveStatus('error');}
+        }
+      });
+      if(localStorage.getItem('gDrConn'))tcRef.current.requestAccessToken({prompt:''});
+      return true;
+    };
+    if(!init()){const t=setInterval(()=>{if(init())clearInterval(t);},300);return()=>clearInterval(t);}
+  },[]);
 
-  const upd=useCallback(nd=>{const c={...nd};setD(c);setDirty(true);autoSave(c);},[]);
+  const connectDrive=()=>{if(!tcRef.current||GDR_CID.includes('PASTE'))return;setDriveStatus('connecting');tcRef.current.requestAccessToken({prompt:''});};
+  const disconnectDrive=()=>{_gTok=null;_gFid=null;localStorage.removeItem('gDrConn');setDriveStatus('idle');};
+
   const rt=(y)=>D?.rates?.[y]||300;
   const cu=(id)=>D?.customers?.find(c=>c.id===id);
   const vc=(v)=>D?.customers?.filter(c=>c.valve===v)||[];
@@ -236,6 +303,8 @@ function App(){
           </label>
           <button className="B Bp" style={{fontSize:15,padding:"14px 20px",width:"100%"}} onClick={onNew}>✨ Start New</button>
           {hasBackup&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onRecover}>🔄 Recover Last Session</button>}
+          {!GDR_CID.includes('PASTE')&&driveStatus==='idle'&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={connectDrive}>☁️ Load from Google Drive</button>}
+          {!GDR_CID.includes('PASTE')&&(driveStatus==='connecting'||driveStatus==='syncing')&&<div style={{color:"rgba(255,255,255,.6)",fontSize:13,padding:"10px",textAlign:"center"}}>☁️ Connecting to Google Drive…</div>}
         </div>
         <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data auto-saved on this device — no manual saving needed.<br/>Use Export to download an Excel backup.</p>
       </div>
@@ -456,7 +525,14 @@ function App(){
         {(tab==="valve"||tab==="cust")&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={()=>{if(tab==="cust"){setCid(null);setTab(valve?"valve":"dash");}else{setValve(null);setTab("dash");}}}>←</button>}
         <h1>💧 Water Supply</h1>
       </div>
-      <button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onSave}>📤 Export</button>
+      <div style={{display:"flex",alignItems:"center",gap:6}}>
+        {driveStatus==='idle'&&!GDR_CID.includes('PASTE')&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={connectDrive}>☁️</button>}
+        {driveStatus==='connecting'&&<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>☁️…</span>}
+        {driveStatus==='syncing'&&<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>☁️↑</span>}
+        {driveStatus==='synced'&&<span style={{fontSize:13,color:"#4ade80",cursor:"pointer"}} title="Connected to Google Drive — tap to disconnect" onClick={disconnectDrive}>☁️✓</span>}
+        {driveStatus==='error'&&<button className="B Bs" style={{background:"#c03028",color:"#fff",fontSize:11}} onClick={connectDrive}>☁️ retry</button>}
+        <button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onSave}>📤</button>
+      </div>
     </div>
 
 
