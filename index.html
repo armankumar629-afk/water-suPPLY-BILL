@@ -24,10 +24,19 @@ input,select,textarea,button{font-family:inherit}
   #printArea,#printArea *{visibility:visible!important}
   #printArea{position:fixed!important;top:0;left:0;width:58mm!important;padding:2mm!important;font-size:10px!important;background:#fff!important;color:#000!important;line-height:1.5!important}
   #reportPrint,#reportPrint *{visibility:visible!important}
-  #reportPrint{position:fixed!important;top:0;left:0;width:100%!important;padding:12mm!important;font-size:11px!important;background:#fff!important;color:#000!important;line-height:1.6!important}
+  #reportPrint{position:fixed!important;top:0;left:0;width:210mm!important;min-height:297mm!important;padding:15mm 20mm!important;font-size:11px!important;background:#fff!important;color:#000!important;line-height:1.7!important}
+  #reportPrint h2,#reportPrint h3,#reportPrint strong{color:#000!important}
+  #reportPrint .rpt-row{border-bottom:1px solid #ccc!important;padding:4px 0!important}
+  #reportPrint .rpt-hdr{border-bottom:2px solid #000!important;margin-bottom:8px!important;padding-bottom:8px!important}
 }
 
-:root{--p:#0d6e52;--pd:#084433;--pl:#e2f3ed;--a:#d97b1e;--al:#fff5e6;--r:#c03028;--rl:#fde8e8;--g:#1a8a54;--gl:#e0f5ea;--m:#6d7e76;--b:#d2ddd7;--bg:#f0f2f1;--c:#fff}
+:root{--p:#0d6e52;--pd:#084433;--pl:#e2f3ed;--a:#d97b1e;--al:#fff5e6;--r:#c03028;--rl:#fde8e8;--g:#1a8a54;--gl:#e0f5ea;--m:#6d7e76;--b:#d2ddd7;--bg:#f0f2f1;--c:#fff;--fs:15px}
+body{font-size:var(--fs)}
+html.dark{--pd:#0d6e52;--bg:#0f1a16;--c:#1a2e26;--b:#2a4038;--m:#7fa898;--pl:#1a3a2c;--gl:#1a3a2c;--al:#3a2800;--rl:#3a1010}
+html.dark body{background:var(--bg);color:#e8f5f0}
+html.dark .I{background:#1a2e26;color:#e8f5f0;border-color:#2a4038}
+html.dark .C{box-shadow:0 1px 4px rgba(0,0,0,.3)}
+html.dark .nav{background:#0a1f18}
 
 .B{border:none;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px;padding:10px 18px;transition:all .1s;font-family:inherit;display:inline-flex;align-items:center;gap:6px;justify-content:center;-webkit-user-select:none;user-select:none}
 .B:active{transform:scale(.96)}
@@ -75,6 +84,11 @@ input,select,textarea,button{font-family:inherit}
 .rb{font-family:'JetBrains Mono',monospace;font-size:11px;line-height:1.6}
 .rb .s{border-top:1.5px dashed var(--b);margin:6px 0}
 .rb .rw{display:flex;justify-content:space-between}
+.swipe-card{transition:transform .15s,background .15s}
+.toast{position:fixed;top:64px;left:50%;transform:translateX(-50%);background:#1a2e26;color:#fff;padding:10px 18px;border-radius:24px;font-size:13px;font-weight:600;z-index:800;box-shadow:0 4px 20px rgba(0,0,0,.3);pointer-events:none;white-space:nowrap}
+@keyframes fadein{from{opacity:0;transform:translateX(-50%) translateY(-8px)}to{opacity:1;transform:translateX(-50%) translateY(0)}}
+.toast{animation:fadein .25s}
+.backup-bar{background:#fef3c7;color:#92400e;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;flex-shrink:0}
 </style>
 </head>
 <body>
@@ -94,6 +108,20 @@ const CY=new Date().getFullYear();
 const CM=new Date().getMonth();
 const KEY="ws-app-v3";
 const PKEY="ws-pin";
+const EXPORT_KEY="ws-last-export";
+
+const T={
+  en:{dash:"Dashboard",collect:"Collect",receipts:"Receipts",reports:"Reports",
+      addCust:"+ Customer",settings:"⚙️",search:"🔍 Search…",
+      totalPaid:"TOTAL PAID",totalDue:"TOTAL DUE",collected:"Collected",outstanding:"Outstanding",
+      unpaid:"Unpaid",paid:"Paid",connections:"connections",collectPayment:"Collect Payment",
+      dueslist:"📋 Dues List",monthly:"📅 Monthly",valvewise:"🔧 Valve Summary"},
+  hi:{dash:"डैशबोर्ड",collect:"संग्रह",receipts:"रसीदें",reports:"रिपोर्ट",
+      addCust:"+ ग्राहक",settings:"⚙️",search:"🔍 खोजें…",
+      totalPaid:"कुल जमा",totalDue:"कुल बकाया",collected:"संग्रह",outstanding:"बकाया",
+      unpaid:"बकाया",paid:"भुगतान",connections:"कनेक्शन",collectPayment:"भुगतान लें",
+      dueslist:"📋 बकाया सूची",monthly:"📅 मासिक",valvewise:"🔧 वॉल सारांश"}
+};
 
 const freshD=()=>({
   customers:[],receipts:[],nCid:1001,nRid:1,
@@ -337,9 +365,34 @@ function App(){
   const[driveStatus,setDriveStatus]=useState(localStorage.getItem('gDrConn')?'connecting':'idle');
   const[pinStatus,setPinStatus]=useState(pinExists()?'locked':'unlocked');
   const[undoCount,setUndoCount]=useState(0);
+  const[lang,setLang]=useState(localStorage.getItem('ws-lang')||'en');
+  const[darkMode,setDarkMode]=useState(localStorage.getItem('ws-dark')==='1');
+  const[fontSize,setFontSize]=useState(localStorage.getItem('ws-fs')||'medium');
+  const[toast,setToast]=useState(null);
+  const[backupReminder,setBackupReminder]=useState(false);
   const tcRef=useRef(null);
   const syncTimer=useRef(null);
   const undoStack=useRef([]);
+  const toastTimer=useRef(null);
+  const swipeRef=useRef(null);
+
+  const t=k=>T[lang][k]||T.en[k]||k;
+  const showToast=msg=>{clearTimeout(toastTimer.current);setToast(msg);toastTimer.current=setTimeout(()=>setToast(null),3500);};
+
+  useEffect(()=>{document.documentElement.classList.toggle('dark',darkMode);},[darkMode]);
+  useEffect(()=>{const s={small:'13px',medium:'15px',large:'18px'};document.documentElement.style.setProperty('--fs',s[fontSize]||'15px');},[fontSize]);
+  useEffect(()=>{localStorage.setItem('ws-lang',lang);},[lang]);
+  useEffect(()=>{localStorage.setItem('ws-dark',darkMode?'1':'0');},[darkMode]);
+  useEffect(()=>{localStorage.setItem('ws-fs',fontSize);},[fontSize]);
+
+  // Toast on open + backup reminder
+  useEffect(()=>{
+    if(!D)return;
+    const unpaidCount=D.customers.filter(c=>c.status==="active"&&!(c.payments?.[CY]||{})[CM]).length;
+    if(unpaidCount>0)showToast(`${unpaidCount} ${t('unpaid')} — ${ME[CM]}`);
+    const last=localStorage.getItem(EXPORT_KEY);
+    if(last){const days=Math.floor((Date.now()-parseInt(last))/(86400000));if(days>=7)setBackupReminder(true);}
+  },[]);
 
   /* ─── UPD + UNDO ─── */
   const upd=useCallback(nd=>{
@@ -397,12 +450,14 @@ function App(){
   const paidM=c=>{const p=c.payments?.[year]||{};return am.filter(i=>!!p[i]);};
 
   const onLoad=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=readXL(new Uint8Array(ev.target.result));setD(d);setDirty(false);autoSave(d);setTab("dash");}catch(err){alert("❌ "+err.message);}};r.readAsArrayBuffer(f);};
-  const onSave=()=>{if(!D)return;dlXL(D);setDirty(false);};
+  const onSave=()=>{if(!D)return;dlXL(D);setDirty(false);localStorage.setItem(EXPORT_KEY,Date.now().toString());setBackupReminder(false);showToast("✅ Excel exported!");};
   const onNew=()=>{const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");};
   const onRecover=()=>{const d=autoLoad();if(d){setD(d);setDirty(true);setTab("dash");}else alert("No backup found");};
 
   const addCust=()=>{
     if(!form.name?.trim())return;
+    const dup=D.customers.find(c=>c.name.toLowerCase().trim()===form.name.toLowerCase().trim());
+    if(dup&&!confirm(`"${form.name}" already exists (C-${dup.id}, V${dup.valve}). Add anyway?`))return;
     const vn=parseInt(form.valveNo)||1;
     D.customers.push({id:D.nCid,name:form.name.trim(),father:(form.father||"").trim(),valve:vn,
       conn:(form.conn||"").trim()||`V${vn}-${D.nCid}`,phone:(form.phone||"").trim(),
@@ -456,7 +511,20 @@ function App(){
     upd(D);alert(`✅ ${n} customers → Valve #${vn}`);setImpTxt("");setModal(null);
   };
 
-  const goTo=(t,v,c)=>{setTab(t);if(v!==undefined)setValve(v);if(c!==undefined)setCid(c);setPayM([]);};
+  const goTo=(tb,v,c)=>{setTab(tb);if(v!==undefined)setValve(v);if(c!==undefined)setCid(c);setPayM([]);};
+
+  const lastPayDate=c=>{
+    const recs=D.receipts.filter(r=>r.cid===c.id);
+    if(!recs.length)return null;
+    return recs.sort((a,b)=>new Date(b.date)-new Date(a.date))[0].date;
+  };
+
+  const waShare=(r,c)=>{
+    const phone=(c?.phone||"").replace(/\D/g,"");
+    const text=`🧾 Receipt #${String(r.no).padStart(6,"0")}\n${D.biz.name}\n\nनाम: ${r.name}\nValve: ${r.valve} | Conn: ${r.conn}\nMonths: ${r.months.map(m=>ME[m]).join(", ")} ${r.year}\nMethod: ${r.method||"cash"}\nTotal: ₹${r.amt}\n\nधन्यवाद / Thank You 🙏`;
+    const url=phone?`https://wa.me/91${phone}?text=${encodeURIComponent(text)}`:`https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url,'_blank');
+  };
 
   /* ─── SEARCH ─── */
   const sr=search.trim()?(()=>{
@@ -627,16 +695,27 @@ function App(){
           {cs.map(c=>{
             const pd=paidM(c).length;const up=unpaidM(c).length;
             const pN=!!(c.payments?.[year]||{})[CM];const isActive=c.status==="active";
-            return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:`4px solid ${!isActive?"#d1d5db":pN||year<CY&&up===0?"var(--g)":"var(--r)"}`}}>
+            const lpd=lastPayDate(c);
+            return <div key={c.id} className="C swipe-card" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:`4px solid ${!isActive?"#d1d5db":pN||year<CY&&up===0?"var(--g)":"var(--r)"}`}}
+              onTouchStart={e=>{swipeRef.current={id:c.id,x:e.touches[0].clientX};}}
+              onTouchEnd={e=>{
+                if(!swipeRef.current||swipeRef.current.id!==c.id)return;
+                const dx=e.changedTouches[0].clientX-swipeRef.current.x;
+                if(dx>70&&year===CY&&isActive&&!pN){togPay(c.id,CM);showToast(`✅ ${c.name} — ${ME[CM]}`);}
+                else if(dx<-70&&year===CY&&isActive&&pN){togPay(c.id,CM);showToast(`↩ ${c.name} unmarked`);}
+                swipeRef.current=null;
+              }}>
               {year===CY&&isActive&&<button className={`B Bs ${pN?"Bg":"Br"}`} style={{fontSize:14,minWidth:36}} onClick={()=>togPay(c.id,CM)}>{pN?"✅":"❌"}</button>}
               <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",valve,c.id)}>
                 <div style={{fontWeight:700,fontSize:13}}>C-{c.id} {c.name} <SBadge s={c.status}/></div>
                 <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"}{c.phone&&` • 📞${c.phone}`}</div>
+                {lpd&&<div style={{fontSize:9,color:"var(--m)"}}>Last paid: {new Date(lpd).toLocaleDateString("en-IN",{day:"numeric",month:"short",year:"numeric"})}</div>}
                 {c.notes&&<div style={{fontSize:10,color:"var(--a)"}}>{c.notes}</div>}
               </div>
               <div style={{textAlign:"right"}}>
                 <div style={{fontSize:12,fontWeight:700,color:up>0?"var(--r)":"var(--g)"}}>{pd}/{am.length}</div>
                 <div style={{fontSize:9,color:"var(--m)"}}>₹{pd*rt(year)}</div>
+                {up>0&&year===CY&&<div style={{fontSize:9,color:"var(--r)",fontWeight:700}}>{up}mo due</div>}
               </div>
             </div>;
           })}
@@ -866,13 +945,14 @@ function App(){
 
   /* ─── RENDER ─── */
   return <div className="app-wrap">
+    {toast&&<div className="toast">{toast}</div>}
     <div className="nav">
       <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
         {(tab==="valve"||tab==="cust")&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={()=>{if(tab==="cust"){setCid(null);setTab(valve?"valve":"dash");}else{setValve(null);setTab("dash");}}}>←</button>}
         <h1>💧 Water Supply</h1>
       </div>
       <div style={{display:"flex",alignItems:"center",gap:5}}>
-        <input className="srch" placeholder="🔍 Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        <input className="srch" placeholder={t("search")} value={search} onChange={e=>setSearch(e.target.value)}/>
         {undoCount>0&&<button className="B Bs" style={{background:"#fbbf24",color:"#000",padding:"4px 8px",fontSize:12}} onClick={undo} title="Undo last change">↩</button>}
         {driveStatus==='idle'&&!GDR_CID.includes('PASTE')&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={connectDrive}>☁️</button>}
         {driveStatus==='connecting'&&<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>☁️…</span>}
@@ -883,6 +963,7 @@ function App(){
       </div>
     </div>
 
+    {backupReminder&&<div className="backup-bar"><span>⚠️ Export backup — it's been a while</span><button className="B Bs Ba" onClick={onSave}>📤 Export Now</button></div>}
     <div className="main-scroll">
       {search.trim()?<SearchView/>:
        tab==="dash"?<Dash/>:
@@ -894,10 +975,10 @@ function App(){
     </div>
 
     {!search.trim()&&tab!=="cust"&&tab!=="valve"&&<div className="btm">
-      <button className={`bt ${tab==="dash"?"on":""}`} onClick={()=>setTab("dash")}><span className="ico">📊</span>Dashboard</button>
-      <button className={`bt ${tab==="collect"?"on":""}`} onClick={()=>setTab("collect")}><span className="ico">💰</span>Collect</button>
-      <button className={`bt ${tab==="receipts"?"on":""}`} onClick={()=>setTab("receipts")}><span className="ico">🧾</span>Receipts</button>
-      <button className={`bt ${tab==="reports"?"on":""}`} onClick={()=>setTab("reports")}><span className="ico">📋</span>Reports</button>
+      <button className={`bt ${tab==="dash"?"on":""}`} onClick={()=>setTab("dash")}><span className="ico">📊</span>{t("dash")}</button>
+      <button className={`bt ${tab==="collect"?"on":""}`} onClick={()=>setTab("collect")}><span className="ico">💰</span>{t("collect")}</button>
+      <button className={`bt ${tab==="receipts"?"on":""}`} onClick={()=>setTab("receipts")}><span className="ico">🧾</span>{t("receipts")}</button>
+      <button className={`bt ${tab==="reports"?"on":""}`} onClick={()=>setTab("reports")}><span className="ico">📋</span>{t("reports")}</button>
     </div>}
 
     {/* MODALS */}
@@ -951,7 +1032,10 @@ function App(){
 
     <Modal open={modal==="receipt"} onClose={()=>{setModal(null);setRecD(null);}} title="🧾 Receipt">
       {recD&&<Rcpt r={recD} c={cu(recD.cid)} biz={D.biz} rate={rt(recD.year)}/>}
-      <button className="B Ba" style={{width:"100%",marginTop:8}} onClick={()=>window.print()}>🖨️ Print</button>
+      <div style={{display:"flex",gap:8,marginTop:8}}>
+        <button className="B Ba" style={{flex:1}} onClick={()=>window.print()}>🖨️ Print</button>
+        <button className="B" style={{flex:1,background:"#25d366",color:"#fff"}} onClick={()=>recD&&waShare(recD,cu(recD.cid))}>📱 WhatsApp</button>
+      </div>
     </Modal>
 
     <Modal open={modal==="import"} onClose={()=>setModal(null)} title="📥 Bulk Import" wide>
@@ -975,6 +1059,25 @@ function App(){
       <Fld label="Business Name"><input className="I" value={D.biz.name} onChange={e=>{D.biz.name=e.target.value;upd(D);}}/></Fld>
       <Fld label="Phone"><input className="I" value={D.biz.phone} onChange={e=>{D.biz.phone=e.target.value;upd(D);}}/></Fld>
       <Fld label="Address"><input className="I" value={D.biz.addr} onChange={e=>{D.biz.addr=e.target.value;upd(D);}}/></Fld>
+
+      <Fld label="Language / भाषा">
+        <div style={{display:"flex",gap:6}}>
+          <button className={`B Bs ${lang==="en"?"Bp":"Bg"}`} style={{flex:1}} onClick={()=>setLang("en")}>English</button>
+          <button className={`B Bs ${lang==="hi"?"Bp":"Bg"}`} style={{flex:1}} onClick={()=>setLang("hi")}>हिंदी</button>
+        </div>
+      </Fld>
+      <Fld label="Theme">
+        <div style={{display:"flex",gap:6}}>
+          <button className={`B Bs ${!darkMode?"Bp":"Bg"}`} style={{flex:1}} onClick={()=>setDarkMode(false)}>☀️ Light</button>
+          <button className={`B Bs ${darkMode?"Bp":"Bg"}`} style={{flex:1}} onClick={()=>setDarkMode(true)}>🌙 Dark</button>
+        </div>
+      </Fld>
+      <Fld label="Text Size">
+        <div style={{display:"flex",gap:6}}>
+          {["small","medium","large"].map(s=><button key={s} className={`B Bs ${fontSize===s?"Bp":"Bg"}`} style={{flex:1,textTransform:"capitalize"}} onClick={()=>setFontSize(s)}>{s}</button>)}
+        </div>
+      </Fld>
+
       <div style={{borderTop:"1px solid var(--b)",paddingTop:10,marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
         {!pinExists()
           ?<button className="B Bg" style={{width:"100%"}} onClick={()=>{setModal(null);setPinStatus('setup');}}>🔒 Set PIN Lock</button>
