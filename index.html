@@ -126,7 +126,7 @@ const T={
 const freshD=()=>({
   customers:[],receipts:[],nCid:1001,nRid:1,
   rates:{2015:200,2016:200,2017:250,2018:250,2019:300,2020:300,2021:300,2022:300,2023:350,2024:350,2025:400,2026:400},
-  biz:{name:"वॉटर सप्लाई मदीना दांगी (रोहतक)",phone:"9466755890",addr:"Madina Dangi, Rohtak"}
+  biz:{name:"वॉटर सप्लाई मदीना दांगी (रोहतक)",phone:"9466755890",addr:"Madina Dangi, Rohtak",upi:""}
 });
 
 function activeMonths(yr,adv=false){
@@ -150,6 +150,7 @@ function readXL(ab){
     if(r.Key==="bizName")D.biz.name=r.Value;
     if(r.Key==="bizPhone")D.biz.phone=String(r.Value);
     if(r.Key==="bizAddr")D.biz.addr=r.Value;
+    if(r.Key==="bizUpi")D.biz.upi=r.Value||"";
     if(r.Key==="nCid")D.nCid=parseInt(r.Value)||1001;
     if(r.Key==="nRid")D.nRid=parseInt(r.Value)||1;
     if(String(r.Key).startsWith("rate_")){const y=parseInt(r.Key.split("_")[1]);if(y)D.rates[y]=parseInt(r.Value)||300;}
@@ -195,7 +196,7 @@ function writeXL(D){
     No:r.no,CustID:r.cid,Name:r.name,Father:r.father,Conn:r.conn,Valve:r.valve,
     Year:r.year,Months:r.months.join(","),Amount:r.amt,Date:r.date,Method:r.method||"cash"
   }))),"Receipts");
-  const st=[{Key:"bizName",Value:D.biz.name},{Key:"bizPhone",Value:D.biz.phone},{Key:"bizAddr",Value:D.biz.addr},{Key:"nCid",Value:D.nCid},{Key:"nRid",Value:D.nRid}];
+  const st=[{Key:"bizName",Value:D.biz.name},{Key:"bizPhone",Value:D.biz.phone},{Key:"bizAddr",Value:D.biz.addr},{Key:"bizUpi",Value:D.biz.upi||""},{Key:"nCid",Value:D.nCid},{Key:"nRid",Value:D.nRid}];
   Object.keys(D.rates).forEach(y=>{st.push({Key:`rate_${y}`,Value:D.rates[y]});});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(st),"Settings");
   ["Customers","Payments","Receipts","Settings"].forEach(n=>{
@@ -296,6 +297,14 @@ function Rcpt({r,c,biz,rate}){
     <div className="rw"><span>भुगतान विधि:</span><span>{METH[r.method||"cash"]}</span></div>
     <div className="rw" style={{fontSize:14,fontWeight:800,marginTop:3}}><span>कुल / Total:</span><span>₹{r.amt}</span></div>
     <div className="s"/>
+    {biz.upi&&<>
+      <div style={{textAlign:"center",marginTop:6,marginBottom:2}}>
+        <div style={{fontSize:8,color:"var(--m)",marginBottom:3}}>📱 UPI से भुगतान करें / Pay via UPI</div>
+        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(`upi://pay?pa=${biz.upi}&pn=${encodeURIComponent(biz.name)}&am=${r.amt}&tn=WaterBill&cu=INR`)}`} alt="UPI QR" style={{width:100,height:100,borderRadius:6,display:"block",margin:"0 auto"}} onError={e=>e.target.style.display='none'}/>
+        <div style={{fontSize:9,color:"var(--m)",marginTop:3,fontFamily:"monospace"}}>{biz.upi}</div>
+      </div>
+      <div className="s"/>
+    </>}
     <div style={{display:"flex",justifyContent:"space-between",fontSize:8,marginTop:2}}>
       <span>जमा: ₹{r.amt}</span><span>हस्ताक्षर: ____________</span>
     </div>
@@ -536,9 +545,21 @@ function App(){
 
   const waShare=(r,c)=>{
     const phone=(c?.phone||"").replace(/\D/g,"");
-    const text=`🧾 Receipt #${String(r.no).padStart(6,"0")}\n${D.biz.name}\n\nनाम: ${r.name}\nValve: ${r.valve} | Conn: ${r.conn}\nMonths: ${r.months.map(m=>ME[m]).join(", ")} ${r.year}\nMethod: ${r.method||"cash"}\nTotal: ₹${r.amt}\n\nधन्यवाद / Thank You 🙏`;
+    const upiLine=D.biz.upi?`\n💳 UPI Payment:\nupi://pay?pa=${D.biz.upi}&pn=${encodeURIComponent(D.biz.name)}&am=${r.amt}&tn=WaterBill&cu=INR`:"";
+    const text=`🧾 Receipt #${String(r.no).padStart(6,"0")}\n${D.biz.name}\n\nनाम: ${r.name}\nValve: ${r.valve} | Conn: ${r.conn}\nMonths: ${r.months.map(m=>ME[m]).join(", ")} ${r.year}\nMethod: ${r.method||"cash"}\nTotal: ₹${r.amt}${upiLine}\n\nधन्यवाद / Thank You 🙏`;
     const url=phone?`https://wa.me/91${phone}?text=${encodeURIComponent(text)}`:`https://wa.me/?text=${encodeURIComponent(text)}`;
     window.open(url,'_blank');
+  };
+
+  const sendReminder=c=>{
+    const up=Array.from({length:CM+1},(_,i)=>i).filter(i=>!(c.payments?.[CY]||{})[i]);
+    if(!up.length){showToast(`✅ ${c.name} — already paid!`);return;}
+    const amt=up.length*rt(CY);
+    const months=up.map(m=>MH[m]).join(", ");
+    const upiLine=D.biz.upi?`\n\n💳 UPI से भुगतान:\nupi://pay?pa=${D.biz.upi}&pn=${encodeURIComponent(D.biz.name)}&am=${amt}&tn=WaterBill&cu=INR`:"";
+    const text=`नमस्ते ${c.name} जी 🙏\n\n${D.biz.name}\nPhone: ${D.biz.phone}\n\n📋 बकाया महीने: ${months}\n💰 कुल राशि: ₹${amt}${upiLine}\n\nकृपया जल्द भुगतान करें।\nधन्यवाद 🙏`;
+    const ph=(c.phone||"").replace(/\D/g,"");
+    window.open(ph?`https://wa.me/91${ph}?text=${encodeURIComponent(text)}`:`https://wa.me/?text=${encodeURIComponent(text)}`,'_blank');
   };
 
   /* ─── SEARCH ─── */
@@ -665,7 +686,10 @@ function App(){
         <h2 style={{fontSize:17,color:"var(--pd)"}}>💰 Collect — {ME[CM]} {CY}</h2>
         {todayAmt>0&&<div style={{fontSize:12,fontWeight:700,color:"var(--g)"}}>Today ₹{todayAmt.toLocaleString()}</div>}
       </div>
-      <p style={{fontSize:11,color:"var(--m)",marginBottom:10}}>{unpaid.length} unpaid • {paid.length} paid</p>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+        <p style={{fontSize:11,color:"var(--m)",margin:0}}>{unpaid.length} unpaid • {paid.length} paid</p>
+        {unpaid.length>0&&<button className="B Bs" style={{background:"#25d366",color:"#fff",fontSize:12}} onClick={()=>setModal("remindAll")}>📱 Remind All ({unpaid.length})</button>}
+      </div>
       {unpaid.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--g)"}}>✅ All collected for {ME[CM]}!</div>:
         <div style={{display:"flex",flexDirection:"column",gap:5}}>
           {unpaid.map(c=><div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:"4px solid var(--r)"}}>
@@ -679,6 +703,7 @@ function App(){
               <div style={{fontSize:10,color:"var(--m)"}}>V{c.valve}{c.phone&&` • 📞${c.phone}`}</div>
               {c.address&&<div style={{fontSize:10,color:"var(--m)"}}>📍 {c.address}</div>}
             </div>
+            {c.phone&&<button className="B Bs" style={{background:"#25d366",color:"#fff",flexShrink:0,fontSize:16,padding:"5px 8px"}} title="WhatsApp Reminder" onClick={e=>{e.stopPropagation();sendReminder(c);}}>📱</button>}
           </div>)}
         </div>}
       {paid.length>0&&<>
@@ -1084,6 +1109,11 @@ function App(){
       <Fld label="Business Name"><input className="I" value={D.biz.name} onChange={e=>{D.biz.name=e.target.value;upd(D);}}/></Fld>
       <Fld label="Phone"><input className="I" value={D.biz.phone} onChange={e=>{D.biz.phone=e.target.value;upd(D);}}/></Fld>
       <Fld label="Address"><input className="I" value={D.biz.addr} onChange={e=>{D.biz.addr=e.target.value;upd(D);}}/></Fld>
+      <Fld label="UPI ID (for QR on receipts)"><input className="I" value={D.biz.upi||""} onChange={e=>{D.biz.upi=e.target.value.trim();upd(D);}} placeholder="yourname@upi or phone@paytm"/></Fld>
+      {D.biz.upi&&<div style={{background:"var(--pl)",borderRadius:8,padding:10,marginBottom:10,textAlign:"center",fontSize:11}}>
+        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`upi://pay?pa=${D.biz.upi}&pn=${encodeURIComponent(D.biz.name)}&cu=INR`)}`} alt="UPI QR Preview" style={{width:80,height:80,borderRadius:4,display:"block",margin:"0 auto 4px"}}/>
+        <span style={{color:"var(--p)",fontWeight:600}}>{D.biz.upi}</span>
+      </div>}
 
       <Fld label="Language / भाषा">
         <div style={{display:"flex",gap:6}}>
@@ -1110,6 +1140,33 @@ function App(){
         <label className="B Ba" style={{width:"100%",cursor:"pointer"}}>📂 Load Excel File<input type="file" accept=".xlsx,.xls" onChange={e=>{if(dirty&&!confirm("Unsaved changes lost?"))return;onLoad(e);setModal(null);}} style={{display:"none"}}/></label>
         <button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("⚠️ DELETE ALL DATA? This cannot be undone.")){const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");setModal(null);}}}>🗑 Reset All Data</button>
       </div>
+    </Modal>
+    <Modal open={modal==="remindAll"} onClose={()=>setModal(null)} title="📱 WhatsApp Reminders">
+      {(()=>{const unpaidNow=activeC.filter(c=>!(c.payments?.[CY]||{})[CM]);
+        return <>
+          <p style={{fontSize:12,color:"var(--m)",marginBottom:10}}>Tap each customer to send a WhatsApp reminder for unpaid {ME[CM]} {CY}.</p>
+          {!D.biz.upi&&<div style={{background:"var(--al)",borderRadius:8,padding:8,marginBottom:10,fontSize:11,color:"var(--a)"}}>💡 Add your UPI ID in Settings to include a payment link in reminders.</div>}
+          <div style={{display:"flex",flexDirection:"column",gap:5,maxHeight:"50vh",overflowY:"auto"}}>
+            {unpaidNow.map(c=>{
+              const up=Array.from({length:CM+1},(_,i)=>i).filter(i=>!(c.payments?.[CY]||{})[i]);
+              return <div key={c.id} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 10px",background:"var(--bg)",borderRadius:8}}>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,fontSize:13}}>C-{c.id} {c.name}</div>
+                  <div style={{fontSize:10,color:"var(--m)"}}>V{c.valve} • {up.length} months • ₹{up.length*rt(CY)}{c.phone?` • 📞${c.phone}`:" • ⚠️ No phone"}</div>
+                </div>
+                {c.phone
+                  ?<button className="B Bs" style={{background:"#25d366",color:"#fff",fontSize:13}} onClick={()=>sendReminder(c)}>📱 Send</button>
+                  :<span style={{fontSize:11,color:"var(--m)"}}>No number</span>}
+              </div>;
+            })}
+          </div>
+          {unpaidNow.filter(c=>c.phone).length>1&&<button className="B" style={{width:"100%",marginTop:12,background:"#25d366",color:"#fff",fontSize:13}} onClick={()=>{
+            let i=0;
+            const next=()=>{const withPhone=unpaidNow.filter(c=>c.phone);if(i>=withPhone.length){showToast(`✅ Opened ${withPhone.length} WhatsApp chats`);return;}sendReminder(withPhone[i++]);setTimeout(next,1500);};
+            if(confirm(`Send WhatsApp reminder to all ${unpaidNow.filter(c=>c.phone).length} customers with phone numbers? Each will open in a new tab.`))next();
+          }}>📱 Send to All ({unpaidNow.filter(c=>c.phone).length})</button>}
+        </>;
+      })()}
     </Modal>
     </>; })()}
   </div>;
