@@ -19,8 +19,13 @@ html{height:100%;overflow:hidden}
 body{font-family:'Outfit',sans-serif;background:#f0f2f1;color:#1a2822;-webkit-tap-highlight-color:transparent;height:100%;overflow:hidden}
 input,select,textarea,button{font-family:inherit}
 
-@media print{body *{visibility:hidden!important}#printArea,#printArea *{visibility:visible!important}
-#printArea{position:fixed!important;top:0;left:0;width:58mm!important;padding:2mm!important;font-size:10px!important;background:#fff!important;color:#000!important;line-height:1.5!important}}
+@media print{
+  body *{visibility:hidden!important}
+  #printArea,#printArea *{visibility:visible!important}
+  #printArea{position:fixed!important;top:0;left:0;width:58mm!important;padding:2mm!important;font-size:10px!important;background:#fff!important;color:#000!important;line-height:1.5!important}
+  #reportPrint,#reportPrint *{visibility:visible!important}
+  #reportPrint{position:fixed!important;top:0;left:0;width:100%!important;padding:12mm!important;font-size:11px!important;background:#fff!important;color:#000!important;line-height:1.6!important}
+}
 
 :root{--p:#0d6e52;--pd:#084433;--pl:#e2f3ed;--a:#d97b1e;--al:#fff5e6;--r:#c03028;--rl:#fde8e8;--g:#1a8a54;--gl:#e0f5ea;--m:#6d7e76;--b:#d2ddd7;--bg:#f0f2f1;--c:#fff}
 
@@ -42,15 +47,28 @@ input,select,textarea,button{font-family:inherit}
 .app-wrap{display:flex;flex-direction:column;height:100vh;height:100dvh}
 .main-scroll{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:20px}
 
-.nav{background:var(--pd);color:#fff;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
-.nav h1{font-size:15px;font-weight:800;display:flex;align-items:center;gap:6px}
-
-.save-bar{background:#fff3cd;color:#856404;padding:6px 14px;display:flex;align-items:center;justify-content:space-between;font-size:12px;font-weight:600;flex-shrink:0}
+.nav{background:var(--pd);color:#fff;padding:8px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:8px}
+.nav h1{font-size:14px;font-weight:800;white-space:nowrap}
+.srch{background:rgba(255,255,255,.15);border:none;border-radius:8px;padding:7px 10px;color:#fff;font-size:13px;outline:none;width:120px;transition:width .2s;flex-shrink:1}
+.srch::placeholder{color:rgba(255,255,255,.5)}
+.srch:focus{width:180px;background:rgba(255,255,255,.22)}
 
 .btm{display:flex;background:var(--c);border-top:1px solid var(--b);flex-shrink:0;padding:4px}
-.bt{flex:1;text-align:center;padding:8px 4px;font-weight:600;font-size:11px;cursor:pointer;border:none;background:none;color:var(--m);border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.bt{flex:1;text-align:center;padding:8px 2px;font-weight:600;font-size:10px;cursor:pointer;border:none;background:none;color:var(--m);border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:2px}
 .bt.on{background:var(--pl);color:var(--p)}
 .bt .ico{font-size:18px}
+
+.pin-wrap{position:fixed;inset:0;background:linear-gradient(135deg,#084433 0%,#0d6e52 100%);display:flex;align-items:center;justify-content:center;z-index:9999}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid rgba(255,255,255,.5);display:inline-block;margin:0 7px;transition:.15s}
+.pin-dot.filled{background:#fff;border-color:#fff}
+.pin-key{width:70px;height:70px;border-radius:50%;border:none;font-size:22px;font-weight:700;background:rgba(255,255,255,.15);color:#fff;cursor:pointer;-webkit-user-select:none;user-select:none}
+.pin-key:active{background:rgba(255,255,255,.3);transform:scale(.93)}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-10px)}40%,80%{transform:translateX(10px)}}
+.shake{animation:shake .35s}
+
+.sbadge{border-radius:5px;padding:1px 7px;font-size:10px;font-weight:700;display:inline-block}
+.sbadge.inactive{background:#f3f4f6;color:#6b7280}
+.sbadge.disconnected{background:var(--rl);color:var(--r)}
 
 @media(min-width:641px){.fr{display:flex;gap:12px}.fr>*{flex:1}}
 
@@ -68,13 +86,14 @@ input,select,textarea,button{font-family:inherit}
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
 <script type="text/babel">
-const{useState,useEffect,useCallback}=React;
+const{useState,useEffect,useCallback,useRef}=React;
 
 const ME=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const MH=["जनवरी","फरवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितम्बर","अक्टूबर","नवम्बर","दिसम्बर"];
 const CY=new Date().getFullYear();
-const CM=new Date().getMonth(); // 0-indexed
+const CM=new Date().getMonth();
 const KEY="ws-app-v3";
+const PKEY="ws-pin";
 
 const freshD=()=>({
   customers:[],receipts:[],nCid:1001,nRid:1,
@@ -82,17 +101,23 @@ const freshD=()=>({
   biz:{name:"वॉटर सप्लाई मदीना दांगी (रोहतक)",phone:"9466755890",addr:"Madina Dangi, Rohtak"}
 });
 
-// Active months: for current year only up to current month, for past years all 12
-function activeMonths(yr){
-  if(yr<CY) return Array.from({length:12},(_,i)=>i);
-  if(yr===CY) return Array.from({length:CM+1},(_,i)=>i);
-  return []; // future year - no months
+function activeMonths(yr,adv=false){
+  if(yr<CY)return Array.from({length:12},(_,i)=>i);
+  if(yr===CY)return adv?Array.from({length:12},(_,i)=>i):Array.from({length:CM+1},(_,i)=>i);
+  return adv?Array.from({length:12},(_,i)=>i):[];
 }
+
+/* ─── PIN ─── */
+const pinHash=p=>btoa('ws:'+p);
+const pinSet=p=>localStorage.setItem(PKEY,pinHash(p));
+const pinCheck=p=>localStorage.getItem(PKEY)===pinHash(p);
+const pinExists=()=>!!localStorage.getItem(PKEY);
+const pinRemove=()=>localStorage.removeItem(PKEY);
 
 /* ─── EXCEL I/O ─── */
 function readXL(ab){
   const wb=XLSX.read(ab,{type:"array"});const D=freshD();
-  const gs=(n)=>wb.SheetNames.includes(n)?XLSX.utils.sheet_to_json(wb.Sheets[n]):[];
+  const gs=n=>wb.SheetNames.includes(n)?XLSX.utils.sheet_to_json(wb.Sheets[n]):[];
   gs("Settings").forEach(r=>{
     if(r.Key==="bizName")D.biz.name=r.Value;
     if(r.Key==="bizPhone")D.biz.phone=String(r.Value);
@@ -101,9 +126,25 @@ function readXL(ab){
     if(r.Key==="nRid")D.nRid=parseInt(r.Value)||1;
     if(String(r.Key).startsWith("rate_")){const y=parseInt(r.Key.split("_")[1]);if(y)D.rates[y]=parseInt(r.Value)||300;}
   });
-  gs("Customers").forEach(r=>{D.customers.push({id:parseInt(r.ID)||D.nCid++,name:r.Name||"",father:r.FatherName||"",valve:parseInt(r.Valve)||1,conn:String(r.ConnNo||""),phone:String(r.Phone||""),payments:{},created:r.Created||new Date().toISOString()});});
-  gs("Payments").forEach(r=>{const c=D.customers.find(x=>x.id===parseInt(r.CustID));if(!c)return;const y=parseInt(r.Year);if(!y)return;if(!c.payments[y])c.payments[y]={};ME.forEach((m,i)=>{if(parseInt(r[m]))c.payments[y][i]=true;});});
-  gs("Receipts").forEach(r=>{D.receipts.push({no:parseInt(r.No)||0,cid:parseInt(r.CustID)||0,name:r.Name||"",father:r.Father||"",conn:String(r.Conn||""),valve:parseInt(r.Valve)||1,year:parseInt(r.Year)||CY,months:(r.Months||"").split(",").map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)),amt:parseInt(r.Amount)||0,date:r.Date||""});});
+  gs("Customers").forEach(r=>{D.customers.push({
+    id:parseInt(r.ID)||D.nCid++,name:r.Name||"",father:r.FatherName||"",
+    valve:parseInt(r.Valve)||1,conn:String(r.ConnNo||""),phone:String(r.Phone||""),
+    address:r.Address||"",status:r.Status||"active",
+    connDate:r.ConnDate||"",deposit:parseInt(r.Deposit)||0,notes:r.Notes||"",
+    payments:{},created:r.Created||new Date().toISOString()
+  });});
+  gs("Payments").forEach(r=>{
+    const c=D.customers.find(x=>x.id===parseInt(r.CustID));if(!c)return;
+    const y=parseInt(r.Year);if(!y)return;
+    if(!c.payments[y])c.payments[y]={};
+    ME.forEach((m,i)=>{if(parseInt(r[m]))c.payments[y][i]=true;});
+  });
+  gs("Receipts").forEach(r=>{D.receipts.push({
+    no:parseInt(r.No)||0,cid:parseInt(r.CustID)||0,name:r.Name||"",father:r.Father||"",
+    conn:String(r.Conn||""),valve:parseInt(r.Valve)||1,year:parseInt(r.Year)||CY,
+    months:(r.Months||"").split(",").map(s=>parseInt(s.trim())).filter(n=>!isNaN(n)),
+    amt:parseInt(r.Amount)||0,date:r.Date||"",method:r.Method||"cash"
+  });});
   const mx=D.customers.reduce((m,c)=>Math.max(m,c.id),1000);if(D.nCid<=mx)D.nCid=mx+1;
   const mr=D.receipts.reduce((m,r)=>Math.max(m,r.no),0);if(D.nRid<=mr)D.nRid=mr+1;
   return D;
@@ -111,20 +152,32 @@ function readXL(ab){
 
 function writeXL(D){
   const wb=XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.customers.map(c=>({ID:c.id,Name:c.name,FatherName:c.father,Valve:c.valve,ConnNo:c.conn,Phone:c.phone,Created:c.created}))),"Customers");
-  const pd=[];D.customers.forEach(c=>{Object.keys(c.payments||{}).forEach(y=>{const row={CustID:c.id,Year:parseInt(y)};ME.forEach((m,i)=>{row[m]=c.payments[y][i]?1:0;});pd.push(row);});});
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.customers.map(c=>({
+    ID:c.id,Name:c.name,FatherName:c.father,Valve:c.valve,ConnNo:c.conn,Phone:c.phone,
+    Address:c.address||"",Status:c.status||"active",ConnDate:c.connDate||"",
+    Deposit:c.deposit||0,Notes:c.notes||"",Created:c.created
+  }))),"Customers");
+  const pd=[];
+  D.customers.forEach(c=>{Object.keys(c.payments||{}).forEach(y=>{
+    const row={CustID:c.id,Year:parseInt(y)};
+    ME.forEach((m,i)=>{row[m]=c.payments[y][i]?1:0;});pd.push(row);
+  });});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(pd),"Payments");
-  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.receipts.map(r=>({No:r.no,CustID:r.cid,Name:r.name,Father:r.father,Conn:r.conn,Valve:r.valve,Year:r.year,Months:r.months.join(","),Amount:r.amt,Date:r.date}))),"Receipts");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(D.receipts.map(r=>({
+    No:r.no,CustID:r.cid,Name:r.name,Father:r.father,Conn:r.conn,Valve:r.valve,
+    Year:r.year,Months:r.months.join(","),Amount:r.amt,Date:r.date,Method:r.method||"cash"
+  }))),"Receipts");
   const st=[{Key:"bizName",Value:D.biz.name},{Key:"bizPhone",Value:D.biz.phone},{Key:"bizAddr",Value:D.biz.addr},{Key:"nCid",Value:D.nCid},{Key:"nRid",Value:D.nRid}];
   Object.keys(D.rates).forEach(y=>{st.push({Key:`rate_${y}`,Value:D.rates[y]});});
   XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(st),"Settings");
-  ["Customers","Payments","Receipts","Settings"].forEach(n=>{const s=wb.Sheets[n];if(!s||!s["!ref"])return;s["!cols"]=Array.from({length:XLSX.utils.decode_range(s["!ref"]).e.c+1},()=>({wch:15}));});
+  ["Customers","Payments","Receipts","Settings"].forEach(n=>{
+    const s=wb.Sheets[n];if(!s||!s["!ref"])return;
+    s["!cols"]=Array.from({length:XLSX.utils.decode_range(s["!ref"]).e.c+1},()=>({wch:15}));
+  });
   return wb;
 }
-
 function dlXL(D){XLSX.writeFile(writeXL(D),`WaterSupply_${new Date().toISOString().slice(0,10)}.xlsx`);}
 
-// Auto-save to localStorage as backup
 function autoSave(D){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}}
 function autoLoad(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch{return null;}}
 
@@ -133,7 +186,6 @@ const GDR_CID='PASTE_YOUR_CLIENT_ID_HERE';
 const GDR_SCOPE='https://www.googleapis.com/auth/drive.appdata';
 const GDR_FNAME='water-supply-data.json';
 let _gTok=null,_gFid=null;
-
 async function gFindFile(){
   const r=await fetch(`https://www.googleapis.com/drive/v3/files?spaces=appDataFolder&q=name%3D'${GDR_FNAME}'&fields=files(id)`,{headers:{Authorization:`Bearer ${_gTok}`}});
   const d=await r.json();_gFid=d.files?.[0]?.id||null;return _gFid;
@@ -157,33 +209,39 @@ async function gWrite(data){
   }
 }
 
-/* ─── UI Components ─── */
+/* ─── SHARED UI ─── */
 function Modal({open,onClose,title,wide,children}){
   if(!open)return null;
-  return <div className="ov" onClick={onClose}><div className={`md ${wide?"w":""}`} onClick={e=>e.stopPropagation()}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
-      <h3 style={{fontSize:16,color:"var(--pd)"}}>{title}</h3>
-      <button className="B Bg Bs" onClick={onClose}>✕</button>
-    </div>{children}</div></div>;
+  return <div className="ov" onClick={onClose}>
+    <div className={`md${wide?" w":""}`} onClick={e=>e.stopPropagation()}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}>
+        <h3 style={{fontSize:16,color:"var(--pd)"}}>{title}</h3>
+        <button className="B Bg Bs" onClick={onClose}>✕</button>
+      </div>
+      {children}
+    </div>
+  </div>;
 }
 function Fld({label,children,s}){return <div style={{marginBottom:10,...s}}><label className="L">{label}</label>{children}</div>;}
+function SBadge({s}){if(!s||s==="active")return null;return <span className={`sbadge ${s}`}>{s==="inactive"?"Inactive":"Disconnected"}</span>;}
 
 function Rcpt({r,c,biz,rate}){
   if(!r||!c)return null;
+  const METH={cash:"💵 Cash",upi:"📱 UPI",cheque:"🏦 Cheque"};
   return <div className="rb" id="printArea">
     <div style={{textAlign:"center",marginBottom:2}}>
       <div style={{fontSize:13,fontWeight:800}}>{biz.name}</div>
       <div style={{fontSize:9,color:"var(--m)"}}>{biz.addr} | M: {biz.phone}</div>
     </div>
     <div className="s"/>
-    <div className="rw"><span>रसीद नं / Receipt:</span><strong>#{String(r.no).padStart(6,"0")}</strong></div>
+    <div className="rw"><span>रसीद / Receipt:</span><strong>#{String(r.no).padStart(6,"0")}</strong></div>
     <div className="rw"><span>दिनांक / Date:</span><span>{new Date(r.date).toLocaleDateString("hi-IN")}</span></div>
     <div className="s"/>
     <div className="rw"><span>ID:</span><span>C-{c.id}</span></div>
     <div className="rw"><span>नाम / Name:</span><span>{c.name}</span></div>
     <div className="rw"><span>पिता / S/o D/o:</span><span>{c.father||"—"}</span></div>
     <div className="rw"><span>वॉल / Valve:</span><span>#{c.valve}</span></div>
-    <div className="rw"><span>कनेक्शन / Conn:</span><span>#{c.conn}</span></div>
+    <div className="rw"><span>कनेक्शन:</span><span>#{c.conn}</span></div>
     {c.phone&&<div className="rw"><span>Phone:</span><span>{c.phone}</span></div>}
     <div className="s"/>
     <div style={{fontSize:10,fontWeight:700,marginBottom:3}}>भुगतान / Payment — {r.year}</div>
@@ -193,10 +251,65 @@ function Rcpt({r,c,biz,rate}){
     <div className="s"/>
     <div className="rw"><span>दर / Rate:</span><span>₹{rate}/month</span></div>
     <div className="rw"><span>महीने / Months:</span><span>{r.months.length}</span></div>
+    <div className="rw"><span>भुगतान विधि:</span><span>{METH[r.method||"cash"]}</span></div>
     <div className="rw" style={{fontSize:14,fontWeight:800,marginTop:3}}><span>कुल / Total:</span><span>₹{r.amt}</span></div>
     <div className="s"/>
-    <div style={{display:"flex",justifyContent:"space-between",fontSize:8,marginTop:2}}><span>जमा: ₹{r.amt}</span><span>हस्ताक्षर: ____________</span></div>
+    <div style={{display:"flex",justifyContent:"space-between",fontSize:8,marginTop:2}}>
+      <span>जमा: ₹{r.amt}</span><span>हस्ताक्षर: ____________</span>
+    </div>
     <div style={{textAlign:"center",fontSize:8,color:"var(--m)",marginTop:5}}>धन्यवाद • Thank you</div>
+  </div>;
+}
+
+/* ─── PIN SCREEN ─── */
+function PinScreen({mode,onSuccess,onCancel}){
+  const[digits,setDigits]=useState([]);
+  const[shake,setShake]=useState(false);
+  const[step,setStep]=useState(1);
+  const[first,setFirst]=useState("");
+  const[err,setErr]=useState("");
+  const add=d=>{
+    if(digits.length>=4)return;
+    const nd=[...digits,d];setDigits(nd);
+    if(nd.length===4){
+      const pin=nd.join("");
+      setTimeout(()=>{
+        if(mode==="check"){
+          if(pinCheck(pin)){onSuccess();}
+          else{setShake(true);setDigits([]);setErr("Wrong PIN");setTimeout(()=>setShake(false),400);}
+        }else{
+          if(step===1){setFirst(pin);setStep(2);setDigits([]);setErr("");}
+          else if(pin===first){pinSet(pin);onSuccess();}
+          else{setStep(1);setFirst("");setDigits([]);setErr("PINs didn't match — try again");}
+        }
+      },120);
+    }
+  };
+  return <div className="pin-wrap">
+    <div style={{textAlign:"center",maxWidth:300,width:"100%",padding:20}}>
+      <div style={{fontSize:40,marginBottom:8}}>💧</div>
+      <h2 style={{color:"#fff",fontSize:18,marginBottom:4}}>{mode==="check"?"Enter PIN":step===1?"Set New PIN":"Confirm PIN"}</h2>
+      {err&&<p style={{color:"#fca5a5",fontSize:12,marginBottom:8}}>{err}</p>}
+      <div className={shake?"shake":""} style={{margin:"16px 0 28px"}}>
+        {[0,1,2,3].map(i=><span key={i} className={`pin-dot${digits[i]!==undefined?" filled":""}`}/>)}
+      </div>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12,maxWidth:230,margin:"0 auto"}}>
+        {[1,2,3,4,5,6,7,8,9].map(n=><button key={n} className="pin-key" onClick={()=>add(String(n))}>{n}</button>)}
+        <div/>
+        <button className="pin-key" onClick={()=>add("0")}>0</button>
+        <button className="pin-key" style={{fontSize:16}} onClick={()=>setDigits(d=>d.slice(0,-1))}>⌫</button>
+      </div>
+      {onCancel&&<button style={{marginTop:20,background:"none",border:"none",color:"rgba(255,255,255,.5)",cursor:"pointer",fontSize:13}} onClick={onCancel}>Cancel</button>}
+    </div>
+  </div>;
+}
+
+/* ─── YEAR BAR ─── */
+function YB({v,fn}){
+  return <div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
+    {Array.from({length:CY-2014+1},(_,i)=>2015+i).map(y=>
+      <button key={y} onClick={()=>fn(y)} className={`B Bs ${v===y?"Bp":"Bg"}`} style={{padding:"3px 9px",fontSize:11}}>{y}</button>
+    )}
   </div>;
 }
 
@@ -213,36 +326,56 @@ function App(){
   const[form,setForm]=useState({});
   const[recD,setRecD]=useState(null);
   const[payM,setPayM]=useState([]);
+  const[payMethod,setPayMethod]=useState("cash");
   const[impTxt,setImpTxt]=useState("");
   const[impV,setImpV]=useState(1);
+  const[advMode,setAdvMode]=useState(false);
+  const[valveFilter,setValveFilter]=useState("all");
+  const[rcptFilter,setRcptFilter]=useState("all");
+  const[rYear,setRYear]=useState(CY);
+  const[rType,setRType]=useState("dues");
   const[driveStatus,setDriveStatus]=useState(localStorage.getItem('gDrConn')?'connecting':'idle');
-  const tcRef=React.useRef(null);
-  const syncTimer=React.useRef(null);
+  const[pinStatus,setPinStatus]=useState(pinExists()?'locked':'unlocked');
+  const[undoCount,setUndoCount]=useState(0);
+  const tcRef=useRef(null);
+  const syncTimer=useRef(null);
+  const undoStack=useRef([]);
 
+  /* ─── UPD + UNDO ─── */
   const upd=useCallback(nd=>{
-    const c={...nd};setD(c);setDirty(true);autoSave(c);
+    const c={...nd};
+    if(D)undoStack.current=[...undoStack.current.slice(-9),JSON.stringify(D)];
+    setUndoCount(undoStack.current.length);
+    setD(c);setDirty(true);autoSave(c);
     if(_gTok){
       setDriveStatus('syncing');
       clearTimeout(syncTimer.current);
       syncTimer.current=setTimeout(async()=>{try{await gWrite(c);setDriveStatus('synced');}catch{setDriveStatus('error');}},1500);
     }
-  },[]);
+  },[D]);
+
+  const undo=()=>{
+    if(!undoStack.current.length)return;
+    const prev=JSON.parse(undoStack.current.pop());
+    setUndoCount(undoStack.current.length);
+    if(prev?.customers){setD(prev);autoSave(prev);}
+  };
+
+  /* ─── GOOGLE DRIVE ─── */
   useEffect(()=>{
     if(GDR_CID.includes('PASTE'))return;
     const init=()=>{
       if(!window.google?.accounts?.oauth2)return false;
       tcRef.current=google.accounts.oauth2.initTokenClient({
         client_id:GDR_CID,scope:GDR_SCOPE,
-        callback:async(resp)=>{
+        callback:async resp=>{
           if(resp.error){setDriveStatus('error');return;}
-          _gTok=resp.access_token;
-          setDriveStatus('syncing');
+          _gTok=resp.access_token;setDriveStatus('syncing');
           try{
             const remote=await gRead();
             if(remote){setD(remote);autoSave(remote);}
             else{const cur=autoLoad();if(cur)await gWrite(cur);}
-            localStorage.setItem('gDrConn','1');
-            setDriveStatus('synced');
+            localStorage.setItem('gDrConn','1');setDriveStatus('synced');
           }catch{setDriveStatus('error');}
         }
       });
@@ -255,43 +388,93 @@ function App(){
   const connectDrive=()=>{if(!tcRef.current||GDR_CID.includes('PASTE'))return;setDriveStatus('connecting');tcRef.current.requestAccessToken({prompt:''});};
   const disconnectDrive=()=>{_gTok=null;_gFid=null;localStorage.removeItem('gDrConn');setDriveStatus('idle');};
 
-  const rt=(y)=>D?.rates?.[y]||300;
-  const cu=(id)=>D?.customers?.find(c=>c.id===id);
-  const vc=(v)=>D?.customers?.filter(c=>c.valve===v)||[];
+  const rt=y=>D?.rates?.[y]||300;
+  const cu=id=>D?.customers?.find(c=>c.id===id);
+  const vc=v=>D?.customers?.filter(c=>c.valve===v)||[];
   const allV=Array.from({length:10},(_,i)=>i+1);
-  const am=activeMonths(year); // months available for selected year
+  const am=activeMonths(year,advMode);
+  const unpaidM=c=>{const p=c.payments?.[year]||{};return am.filter(i=>!p[i]);};
+  const paidM=c=>{const p=c.payments?.[year]||{};return am.filter(i=>!!p[i]);};
 
-  const onLoad=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=readXL(new Uint8Array(ev.target.result));setD(d);setDirty(false);autoSave(d);setTab("dash");}catch(err){alert("❌ Error: "+err.message);}};r.readAsArrayBuffer(f);};
+  const onLoad=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{try{const d=readXL(new Uint8Array(ev.target.result));setD(d);setDirty(false);autoSave(d);setTab("dash");}catch(err){alert("❌ "+err.message);}};r.readAsArrayBuffer(f);};
   const onSave=()=>{if(!D)return;dlXL(D);setDirty(false);};
   const onNew=()=>{const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");};
   const onRecover=()=>{const d=autoLoad();if(d){setD(d);setDirty(true);setTab("dash");}else alert("No backup found");};
 
-  const addCust=()=>{if(!form.name?.trim())return;const vn=parseInt(form.valveNo)||1;D.customers.push({id:D.nCid,name:form.name.trim(),father:(form.father||"").trim(),valve:vn,conn:(form.conn||"").trim()||`V${vn}-${D.nCid}`,phone:(form.phone||"").trim(),payments:{},created:new Date().toISOString()});D.nCid++;upd(D);setModal(null);setForm({});};
-  const editCust=()=>{const c=cu(cid);if(!c)return;if(form.name)c.name=form.name;if(form.father!==undefined)c.father=form.father;if(form.phone!==undefined)c.phone=form.phone;if(form.valveNo)c.valve=parseInt(form.valveNo);if(form.conn)c.conn=form.conn;upd(D);setModal(null);};
-  const delCust=(id)=>{if(!confirm("Delete C-"+id+"?"))return;D.customers=D.customers.filter(c=>c.id!==id);D.receipts=D.receipts.filter(r=>r.cid!==id);upd(D);if(cid===id){setCid(null);setTab(valve?"valve":"dash");}};
-  const togPay=(id,m)=>{const c=cu(id);if(!c)return;if(!c.payments[year])c.payments[year]={};c.payments[year][m]=!c.payments[year][m];upd(D);};
+  const addCust=()=>{
+    if(!form.name?.trim())return;
+    const vn=parseInt(form.valveNo)||1;
+    D.customers.push({id:D.nCid,name:form.name.trim(),father:(form.father||"").trim(),valve:vn,
+      conn:(form.conn||"").trim()||`V${vn}-${D.nCid}`,phone:(form.phone||"").trim(),
+      address:(form.address||"").trim(),status:form.status||"active",
+      connDate:form.connDate||"",deposit:parseInt(form.deposit)||0,
+      notes:(form.notes||"").trim(),payments:{},created:new Date().toISOString()});
+    D.nCid++;upd(D);setModal(null);setForm({});
+  };
+
+  const editCust=()=>{
+    const c=cu(cid);if(!c)return;
+    Object.assign(c,{
+      name:form.name||c.name,father:form.father??c.father,phone:form.phone??c.phone,
+      valve:parseInt(form.valveNo)||c.valve,conn:form.conn||c.conn,
+      address:form.address??c.address,status:form.status||c.status,
+      connDate:form.connDate??c.connDate,deposit:parseInt(form.deposit)||c.deposit,
+      notes:form.notes??c.notes
+    });
+    upd(D);setModal(null);
+  };
+
+  const delCust=id=>{
+    if(!confirm("Delete C-"+id+"?"))return;
+    D.customers=D.customers.filter(c=>c.id!==id);
+    D.receipts=D.receipts.filter(r=>r.cid!==id);
+    upd(D);if(cid===id){setCid(null);setTab(valve?"valve":"dash");}
+  };
+
+  const togPay=(id,m)=>{
+    const c=cu(id);if(!c)return;
+    if(!c.payments[year])c.payments[year]={};
+    c.payments[year][m]=!c.payments[year][m];upd(D);
+  };
 
   const collect=()=>{
     if(!payM.length)return;const c=cu(cid);if(!c)return;
     if(!c.payments[year])c.payments[year]={};
     payM.forEach(m=>{c.payments[year][m]=true;});
-    const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,year,months:[...payM].sort((a,b)=>a-b),amt:payM.length*rt(year),date:new Date().toISOString()};
+    const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,
+      year,months:[...payM].sort((a,b)=>a-b),amt:payM.length*rt(year),
+      date:new Date().toISOString(),method:payMethod};
     D.nRid++;D.receipts.push(r);upd(D);setRecD(r);setPayM([]);setModal("receipt");
   };
 
-  const doImport=()=>{const lines=impTxt.trim().split("\n").filter(l=>l.trim());let n=0;const vn=parseInt(impV)||1;
-    lines.forEach(l=>{const p=l.split(/[,\t]+/).map(s=>s.trim());if(!p[0])return;D.customers.push({id:D.nCid++,name:p[0],father:p[1]||"",valve:vn,conn:p[3]||`V${vn}-${D.nCid-1}`,phone:p[2]||"",payments:{},created:new Date().toISOString()});n++;});
-    upd(D);alert(`✅ ${n} customers → Valve #${vn}`);setImpTxt("");setModal(null);};
+  const doImport=()=>{
+    const lines=impTxt.trim().split("\n").filter(l=>l.trim());let n=0;const vn=parseInt(impV)||1;
+    lines.forEach(l=>{const p=l.split(/[,\t]+/).map(s=>s.trim());if(!p[0])return;
+      D.customers.push({id:D.nCid++,name:p[0],father:p[1]||"",valve:vn,
+        conn:p[3]||`V${vn}-${D.nCid-1}`,phone:p[2]||"",address:"",status:"active",
+        connDate:"",deposit:0,notes:"",payments:{},created:new Date().toISOString()});n++;});
+    upd(D);alert(`✅ ${n} customers → Valve #${vn}`);setImpTxt("");setModal(null);
+  };
 
+  const goTo=(t,v,c)=>{setTab(t);if(v!==undefined)setValve(v);if(c!==undefined)setCid(c);setPayM([]);};
+
+  /* ─── SEARCH ─── */
   const sr=search.trim()?(()=>{
     const q=search.toLowerCase().trim();
-    if(/^[r#]?\d{1,}$/i.test(q)){const n=parseInt(q.replace(/\D/g,""));const rs=D.receipts.filter(r=>r.no===n);if(rs.length)return{t:"r",i:rs};}
-    return{t:"c",i:D.customers.filter(c=>c.name.toLowerCase().includes(q)||(c.father||"").toLowerCase().includes(q)||String(c.id).includes(q)||c.conn.toLowerCase().includes(q)||(c.phone||"").includes(q))};
+    if(/^[r#]?\d+$/i.test(q)){const n=parseInt(q.replace(/\D/g,""));const rs=D.receipts.filter(r=>r.no===n);if(rs.length)return{t:"r",i:rs};}
+    return{t:"c",i:D.customers.filter(c=>
+      c.name.toLowerCase().includes(q)||(c.father||"").toLowerCase().includes(q)||
+      String(c.id).includes(q)||c.conn.toLowerCase().includes(q)||
+      (c.phone||"").includes(q)||(c.address||"").toLowerCase().includes(q)
+    )};
   })():null;
+
+  /* ─── PIN GATES ─── */
+  if(pinStatus==='locked')return <PinScreen mode="check" onSuccess={()=>setPinStatus('unlocked')}/>;
+  if(pinStatus==='setup')return <PinScreen mode="setup" onSuccess={()=>setPinStatus('unlocked')} onCancel={()=>setPinStatus('unlocked')}/>;
 
   /* ─── WELCOME ─── */
   if(!D){
-    const hasBackup=!!autoLoad();
     return <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#084433 0%,#0d6e52 100%)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}}>
       <div style={{textAlign:"center",maxWidth:380,width:"100%"}}>
         <div style={{fontSize:56,marginBottom:12}}>💧</div>
@@ -302,27 +485,50 @@ function App(){
             📂 Open Excel File<input type="file" accept=".xlsx,.xls" onChange={onLoad} style={{display:"none"}}/>
           </label>
           <button className="B Bp" style={{fontSize:15,padding:"14px 20px",width:"100%"}} onClick={onNew}>✨ Start New</button>
-          {hasBackup&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onRecover}>🔄 Recover Last Session</button>}
+          {!!autoLoad()&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onRecover}>🔄 Recover Last Session</button>}
           {!GDR_CID.includes('PASTE')&&driveStatus==='idle'&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={connectDrive}>☁️ Load from Google Drive</button>}
-          {!GDR_CID.includes('PASTE')&&(driveStatus==='connecting'||driveStatus==='syncing')&&<div style={{color:"rgba(255,255,255,.6)",fontSize:13,padding:"10px",textAlign:"center"}}>☁️ Connecting to Google Drive…</div>}
+          {!GDR_CID.includes('PASTE')&&(driveStatus==='connecting'||driveStatus==='syncing')&&<div style={{color:"rgba(255,255,255,.6)",fontSize:13,padding:10,textAlign:"center"}}>☁️ Connecting…</div>}
         </div>
-        <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data auto-saved on this device — no manual saving needed.<br/>Use Export to download an Excel backup.</p>
+        <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data auto-saved on this device.<br/>Use Export for an Excel backup.</p>
       </div>
     </div>;
   }
 
-  const tC=D.customers.length;
+  /* ─── COMPUTED ─── */
+  const activeC=D.customers.filter(c=>c.status==="active");
+  const tC=D.customers.filter(c=>c.status!=="disconnected").length;
   const tCol=D.customers.reduce((s,c)=>{const p=c.payments?.[year]||{};return s+Object.values(p).filter(Boolean).length*rt(year);},0);
-  const curUnp=D.customers.filter(c=>!(c.payments?.[year]||{})[CM]).length;
+  const curUnp=activeC.filter(c=>!(c.payments?.[year]||{})[CM]).length;
+  const totalDueAll=activeC.reduce((s,c)=>s+Array.from({length:CY-2014},(_,i)=>2015+i+1).reduce((ys,y)=>{
+    const paid=Object.values(c.payments?.[y]||{}).filter(Boolean).length;
+    return ys+(activeMonths(y).length-paid)*rt(y);
+  },0),0);
 
-  // Unpaid months for a customer in selected year
-  const unpaidMonths=(c)=>{const p=c.payments?.[year]||{};return am.filter(i=>!p[i]);};
-  const paidMonths=(c)=>{const p=c.payments?.[year]||{};return am.filter(i=>!!p[i]);};
-
-  const YB=({v,fn})=><div style={{display:"flex",gap:3,flexWrap:"wrap",marginBottom:6}}>
-    {Array.from({length:CY-2014},(_,i)=>2015+i).map(y=><button key={y} onClick={()=>{fn(y);setPayM([]);}} className={`B Bs ${v===y?"Bp":"Bg"}`} style={{padding:"3px 9px",fontSize:11}}>{y}</button>)}</div>;
-
-  const goTo=(t,v,c)=>{setTab(t);if(v!==undefined)setValve(v);if(c!==undefined)setCid(c);setPayM([]);};
+  /* ─── SEARCH RESULTS ─── */
+  const SearchView=()=><div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+    <div style={{fontSize:13,color:"var(--m)",marginBottom:8}}>🔍 "{search}" — {sr?.i?.length||0} results</div>
+    {!sr||sr.i.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--m)"}}>No results found</div>:
+    sr.t==="c"?<div style={{display:"flex",flexDirection:"column",gap:5}}>
+      {sr.i.map(c=><div key={c.id} className="C" style={{padding:"10px 12px",cursor:"pointer",borderLeft:`4px solid ${c.status==="disconnected"?"#d1d5db":c.status==="inactive"?"#f59e0b":"var(--p)"}`}} onClick={()=>{goTo("cust",c.valve,c.id);setSearch("");}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+          <div>
+            <span style={{color:"var(--m)",fontSize:11}}>C-{c.id}</span> <strong>{c.name}</strong> <SBadge s={c.status}/>
+            <div style={{fontSize:11,color:"var(--m)"}}>s/o {c.father||"—"} • V{c.valve} • #{c.conn}{c.phone&&` • 📞${c.phone}`}</div>
+            {c.address&&<div style={{fontSize:10,color:"var(--m)"}}>📍 {c.address}</div>}
+          </div>
+          <span style={{fontSize:11,fontWeight:700,color:unpaidM(c).length>0?"var(--r)":"var(--g)",flexShrink:0}}>
+            {unpaidM(c).length>0?`${unpaidM(c).length} due`:"✅"}
+          </span>
+        </div>
+      </div>)}
+    </div>:
+    <div style={{display:"flex",flexDirection:"column",gap:4}}>
+      {sr.i.map(r=><div key={r.no} className="C" style={{padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between"}} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");setSearch("");}}>
+        <div><strong>#{String(r.no).padStart(6,"0")}</strong><div style={{fontSize:11,color:"var(--m)"}}>{r.name} • {r.method||"cash"}</div></div>
+        <div style={{textAlign:"right"}}><strong style={{color:"var(--g)"}}>₹{r.amt}</strong><div style={{fontSize:10,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{String(r.year).slice(2)}</div></div>
+      </div>)}
+    </div>}
+  </div>;
 
   /* ─── DASHBOARD ─── */
   const Dash=()=><div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
@@ -330,76 +536,68 @@ function App(){
       <h2 style={{fontSize:17,color:"var(--pd)"}}>{D.biz.name}</h2>
       <p style={{fontSize:11,color:"var(--m)"}}>📞 {D.biz.phone}</p>
     </div>
-    <YB v={year} fn={setYear}/>
-    <div style={{fontSize:11,color:"var(--m)",marginBottom:8}}>₹{rt(year)}/mo • {am.length} months ({ME[am[0]]}–{ME[am[am.length-1]||0]}) {year===CY&&"(till now)"}</div>
-
+    <YB v={year} fn={y=>{setYear(y);setPayM([]);setAdvMode(false);}}/>
+    <div style={{fontSize:11,color:"var(--m)",marginBottom:8}}>₹{rt(year)}/mo • {am.length} months {year===CY&&"(till now)"}</div>
     <div style={{display:"flex",gap:8,flexWrap:"wrap",marginBottom:12}}>
-      {[{n:tC,l:"Connections",c:"var(--p)"},{n:`₹${tCol.toLocaleString()}`,l:"Collected",c:"var(--g)"},{n:curUnp,l:`Unpaid ${ME[CM]}`,c:"var(--r)"}].map((s,i)=>
-        <div key={i} style={{flex:"1 1 100px",minWidth:100,padding:"12px",borderRadius:12,background:"var(--c)",boxShadow:"0 1px 3px rgba(0,0,0,.04)",borderLeft:`4px solid ${s.c}`}}>
-          <div style={{fontSize:20,fontWeight:800,color:s.c}}>{s.n}</div>
+      {[
+        {n:tC,l:"Connections",c:"var(--p)"},
+        {n:`₹${tCol.toLocaleString()}`,l:`Collected ${year}`,c:"var(--g)"},
+        {n:curUnp,l:`Unpaid ${ME[CM]}`,c:"var(--r)"},
+        {n:`₹${totalDueAll.toLocaleString()}`,l:"All Outstanding",c:"var(--a)"}
+      ].map((s,i)=>
+        <div key={i} style={{flex:"1 1 100px",minWidth:100,padding:12,borderRadius:12,background:"var(--c)",boxShadow:"0 1px 3px rgba(0,0,0,.04)",borderLeft:`4px solid ${s.c}`}}>
+          <div style={{fontSize:18,fontWeight:800,color:s.c}}>{s.n}</div>
           <div style={{fontSize:10,color:"var(--m)",fontWeight:600,textTransform:"uppercase",marginTop:1}}>{s.l}</div>
-        </div>)}
+        </div>
+      )}
     </div>
-
-    <div style={{position:"relative",marginBottom:12}}>
-      <input className="I" placeholder="🔍 Name, C-ID, phone, receipt #..." value={search} onChange={e=>setSearch(e.target.value)} style={{fontSize:13}}/>
-      {sr&&search.trim()&&<div style={{position:"absolute",top:"100%",left:0,right:0,background:"var(--c)",borderRadius:10,marginTop:4,boxShadow:"0 6px 24px rgba(0,0,0,.12)",maxHeight:240,overflowY:"auto",zIndex:50}}>
-        {sr.i.length===0&&<div style={{padding:12,textAlign:"center",color:"var(--m)",fontSize:13}}>No results</div>}
-        {sr.t==="c"&&sr.i.slice(0,15).map(c=><div key={c.id} onClick={()=>{goTo("cust",c.valve,c.id);setSearch("");}} style={{padding:"8px 12px",borderBottom:"1px solid var(--b)",cursor:"pointer"}}>
-          <div style={{fontWeight:600,fontSize:13}}><span style={{color:"var(--m)",fontSize:11}}>C-{c.id}</span> {c.name}</div>
-          <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"} • V{c.valve} • #{c.conn}</div>
-        </div>)}
-        {sr.t==="r"&&sr.i.map(r=><div key={r.no} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");setSearch("");}} style={{padding:"8px 12px",borderBottom:"1px solid var(--b)",cursor:"pointer"}}>
-          <div style={{fontWeight:600}}>#{String(r.no).padStart(6,"0")} <span style={{fontWeight:400,color:"var(--m)",fontSize:11}}>₹{r.amt} • {r.name}</span></div>
-        </div>)}
-      </div>}
-    </div>
-
     <h3 style={{fontSize:14,marginBottom:6,color:"var(--pd)"}}>Valves / वॉल</h3>
     <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(130px,1fr))",gap:8,marginBottom:12}}>
-      {allV.map(v=>{const cs=vc(v);const paid=cs.filter(c=>(c.payments?.[year]||{})[CM]).length;
+      {allV.map(v=>{const cs=vc(v).filter(c=>c.status==="active");const paid=cs.filter(c=>(c.payments?.[year]||{})[CM]).length;
         return <div key={v} className="C" onClick={()=>goTo("valve",v)} style={{cursor:"pointer",borderTop:"3px solid var(--p)",padding:12}}>
           <div style={{fontSize:22,fontWeight:800,color:"var(--p)"}}>V-{v}</div>
           <div style={{fontSize:11,color:"var(--m)"}}>{cs.length} conn</div>
-          <div style={{fontSize:10,marginTop:4}}><span style={{color:"var(--g)",fontWeight:600}}>{paid}✓</span>{cs.length-paid>0&&<span style={{color:"var(--r)",fontWeight:600,marginLeft:4}}>{cs.length-paid}✗</span>}</div>
-        </div>;})}
+          <div style={{fontSize:10,marginTop:4}}>
+            <span style={{color:"var(--g)",fontWeight:600}}>{paid}✓</span>
+            {cs.length-paid>0&&<span style={{color:"var(--r)",fontWeight:600,marginLeft:4}}>{cs.length-paid}✗</span>}
+          </div>
+        </div>;
+      })}
     </div>
     <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-      <button className="B Bp" onClick={()=>{setForm({valveNo:1});setModal("addC");}}>+ Customer</button>
+      <button className="B Bp" onClick={()=>{setForm({valveNo:1,status:"active"});setModal("addC");}}>+ Customer</button>
       <button className="B Ba" onClick={()=>setModal("import")}>📥 Import</button>
       <button className="B Bg" onClick={()=>setModal("rates")}>💰 Rates</button>
       <button className="B Bg" onClick={()=>setModal("settings")}>⚙️</button>
     </div>
   </div>;
 
-  /* ─── COLLECT TAB (Monthly Collection) ─── */
+  /* ─── COLLECT ─── */
   const Collect=()=>{
-    // Show all customers with unpaid months for current month
-    const unpaid=D.customers.filter(c=>!(c.payments?.[CY]||{})[CM]);
-    const paid=D.customers.filter(c=>(c.payments?.[CY]||{})[CM]);
+    const unpaid=activeC.filter(c=>!(c.payments?.[CY]||{})[CM]);
+    const paid=activeC.filter(c=>(c.payments?.[CY]||{})[CM]);
+    const todayAmt=D.receipts.filter(r=>new Date(r.date).toDateString()===new Date().toDateString()).reduce((s,r)=>s+r.amt,0);
     return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
-      <h2 style={{fontSize:17,color:"var(--pd)",marginBottom:2}}>📋 Collect — {ME[CM]} {CY}</h2>
-      <p style={{fontSize:11,color:"var(--m)",marginBottom:10}}>₹{rt(CY)}/mo • {unpaid.length} unpaid • {paid.length} paid</p>
-
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:2}}>
+        <h2 style={{fontSize:17,color:"var(--pd)"}}>💰 Collect — {ME[CM]} {CY}</h2>
+        {todayAmt>0&&<div style={{fontSize:12,fontWeight:700,color:"var(--g)"}}>Today ₹{todayAmt.toLocaleString()}</div>}
+      </div>
+      <p style={{fontSize:11,color:"var(--m)",marginBottom:10}}>{unpaid.length} unpaid • {paid.length} paid</p>
       {unpaid.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--g)"}}>✅ All collected for {ME[CM]}!</div>:
-      <div style={{display:"flex",flexDirection:"column",gap:5}}>
-        {unpaid.map(c=>{
-          return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:"4px solid var(--r)"}}>
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {unpaid.map(c=><div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:"4px solid var(--r)"}}>
             <button className="B Ba Bs" onClick={()=>{
-              // Quick collect current month
-              if(!c.payments[CY])c.payments[CY]={};
-              c.payments[CY][CM]=true;
-              const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,year:CY,months:[CM],amt:rt(CY),date:new Date().toISOString()};
+              if(!c.payments[CY])c.payments[CY]={};c.payments[CY][CM]=true;
+              const r={no:D.nRid,cid:c.id,name:c.name,father:c.father,conn:c.conn,valve:c.valve,year:CY,months:[CM],amt:rt(CY),date:new Date().toISOString(),method:"cash"};
               D.nRid++;D.receipts.push(r);upd(D);setRecD(r);setCid(c.id);setModal("receipt");
             }}>₹{rt(CY)}</button>
             <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",c.valve,c.id)}>
               <div style={{fontWeight:700,fontSize:13}}>C-{c.id} • {c.name}</div>
-              <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"} • V{c.valve} {c.phone&&`📞${c.phone}`}</div>
+              <div style={{fontSize:10,color:"var(--m)"}}>V{c.valve}{c.phone&&` • 📞${c.phone}`}</div>
+              {c.address&&<div style={{fontSize:10,color:"var(--m)"}}>📍 {c.address}</div>}
             </div>
-            <div style={{fontSize:10,color:"var(--r)",fontWeight:600}}>V-{c.valve}</div>
-          </div>;})}
-      </div>}
-
+          </div>)}
+        </div>}
       {paid.length>0&&<>
         <h3 style={{fontSize:13,color:"var(--g)",marginTop:14,marginBottom:6}}>✅ Paid ({paid.length})</h3>
         <div style={{display:"flex",flexDirection:"column",gap:3}}>
@@ -413,157 +611,342 @@ function App(){
   };
 
   /* ─── VALVE VIEW ─── */
-  const VView=()=>{const cs=vc(valve);return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
-      <div><h2 style={{fontSize:17,color:"var(--pd)"}}>Valve #{valve}</h2><p style={{fontSize:11,color:"var(--m)"}}>{cs.length} connections</p></div>
-      <button className="B Bp Bs" onClick={()=>{setForm({valveNo:valve});setModal("addC");}}>+ Add</button>
-    </div>
-    <YB v={year} fn={setYear}/>
-    {cs.length===0?<div className="C" style={{textAlign:"center",padding:24,color:"var(--m)"}}>Empty</div>:
-      <div style={{display:"flex",flexDirection:"column",gap:5}}>
-        {cs.map(c=>{const pd=paidMonths(c).length;const up=unpaidMonths(c).length;const pN=!!(c.payments?.[year]||{})[CM];
-          return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:`4px solid ${pN||year<CY&&up===0?"var(--g)":"var(--r)"}`}}>
-            {year===CY&&<button className={`B Bs ${pN?"Bg":"Br"}`} style={{fontSize:14,minWidth:36}} onClick={()=>togPay(c.id,CM)}>{pN?"✅":"❌"}</button>}
-            <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",valve,c.id)}>
-              <div style={{fontWeight:700,fontSize:13}}>C-{c.id} {c.name}</div>
-              <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"}</div>
-            </div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:700,color:up>0?"var(--r)":"var(--g)"}}>{pd}/{am.length}</div><div style={{fontSize:9,color:"var(--m)"}}>₹{pd*rt(year)}</div></div>
-          </div>;})}
-      </div>}
-  </div>;};
+  const VView=()=>{
+    const cs=vc(valve).filter(c=>valveFilter==="all"?true:c.status===valveFilter);
+    return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <div><h2 style={{fontSize:17,color:"var(--pd)"}}>Valve #{valve}</h2><p style={{fontSize:11,color:"var(--m)"}}>{vc(valve).length} connections</p></div>
+        <button className="B Bp Bs" onClick={()=>{setForm({valveNo:valve,status:"active"});setModal("addC");}}>+ Add</button>
+      </div>
+      <YB v={year} fn={y=>{setYear(y);setPayM([]);setAdvMode(false);}}/>
+      <div style={{display:"flex",gap:4,marginBottom:8,flexWrap:"wrap"}}>
+        {["all","active","inactive","disconnected"].map(f=><button key={f} className={`B Bs ${valveFilter===f?"Bp":"Bg"}`} style={{padding:"3px 9px",fontSize:11,textTransform:"capitalize"}} onClick={()=>setValveFilter(f)}>{f}</button>)}
+      </div>
+      {cs.length===0?<div className="C" style={{textAlign:"center",padding:24,color:"var(--m)"}}>Empty</div>:
+        <div style={{display:"flex",flexDirection:"column",gap:5}}>
+          {cs.map(c=>{
+            const pd=paidM(c).length;const up=unpaidM(c).length;
+            const pN=!!(c.payments?.[year]||{})[CM];const isActive=c.status==="active";
+            return <div key={c.id} className="C" style={{padding:"10px 12px",display:"flex",alignItems:"center",gap:8,borderLeft:`4px solid ${!isActive?"#d1d5db":pN||year<CY&&up===0?"var(--g)":"var(--r)"}`}}>
+              {year===CY&&isActive&&<button className={`B Bs ${pN?"Bg":"Br"}`} style={{fontSize:14,minWidth:36}} onClick={()=>togPay(c.id,CM)}>{pN?"✅":"❌"}</button>}
+              <div style={{flex:1,cursor:"pointer"}} onClick={()=>goTo("cust",valve,c.id)}>
+                <div style={{fontWeight:700,fontSize:13}}>C-{c.id} {c.name} <SBadge s={c.status}/></div>
+                <div style={{fontSize:10,color:"var(--m)"}}>s/o {c.father||"—"}{c.phone&&` • 📞${c.phone}`}</div>
+                {c.notes&&<div style={{fontSize:10,color:"var(--a)"}}>{c.notes}</div>}
+              </div>
+              <div style={{textAlign:"right"}}>
+                <div style={{fontSize:12,fontWeight:700,color:up>0?"var(--r)":"var(--g)"}}>{pd}/{am.length}</div>
+                <div style={{fontSize:9,color:"var(--m)"}}>₹{pd*rt(year)}</div>
+              </div>
+            </div>;
+          })}
+        </div>}
+    </div>;
+  };
 
   /* ─── CUSTOMER VIEW ─── */
   const CView=()=>{
     const c=cu(cid);if(!c)return <div style={{padding:20,textAlign:"center"}}>Not found</div>;
-    const p=c.payments?.[year]||{};const pd=paidMonths(c);const up=unpaidMonths(c);
+    const p=c.payments?.[year]||{};
+    const pd=paidM(c);const up=unpaidM(c);
     const cR=D.receipts.filter(r=>r.cid===c.id).sort((a,b)=>b.no-a.no);
     const aY=Object.keys(c.payments).sort();
-
+    const allYrs=Array.from({length:CY-2014},(_,i)=>2015+i+1);
+    const totalPaid=allYrs.reduce((s,y)=>s+Object.values(c.payments?.[y]||{}).filter(Boolean).length*rt(y),0);
+    const totalDue=allYrs.reduce((s,y)=>{const paid=Object.values(c.payments?.[y]||{}).filter(Boolean).length;return s+(activeMonths(y).length-paid)*rt(y);},0);
     return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
       <div className="C" style={{marginBottom:8}}>
         <div style={{display:"flex",justifyContent:"space-between",flexWrap:"wrap",gap:6}}>
           <div>
-            <div style={{fontSize:10,color:"var(--m)",fontWeight:700}}>C-{c.id} • V#{c.valve} • #{c.conn}</div>
+            <div style={{fontSize:10,color:"var(--m)",fontWeight:700,marginBottom:2}}>C-{c.id} • V#{c.valve} • #{c.conn} <SBadge s={c.status}/></div>
             <h2 style={{fontSize:18,color:"var(--pd)",margin:"2px 0"}}>{c.name}</h2>
             <div style={{fontSize:12,color:"var(--m)"}}>पिता: <strong>{c.father||"—"}</strong></div>
             {c.phone&&<div style={{fontSize:12,color:"var(--m)"}}>📞 {c.phone}</div>}
+            {c.address&&<div style={{fontSize:12,color:"var(--m)"}}>📍 {c.address}</div>}
+            {c.connDate&&<div style={{fontSize:11,color:"var(--m)"}}>🔗 Connected: {c.connDate}</div>}
+            {c.deposit>0&&<div style={{fontSize:11,color:"var(--m)"}}>🏦 Deposit: ₹{c.deposit}</div>}
+            {c.notes&&<div style={{fontSize:11,color:"var(--a)",marginTop:2}}>📝 {c.notes}</div>}
           </div>
-          <div style={{display:"flex",gap:4}}><button className="B Bg Bs" onClick={()=>{setForm({name:c.name,father:c.father,phone:c.phone,valveNo:c.valve,conn:c.conn});setModal("editC");}}>✏️</button><button className="B Br Bs" onClick={()=>delCust(c.id)}>🗑</button></div>
+          <div style={{display:"flex",gap:4,alignItems:"flex-start"}}>
+            <button className="B Bg Bs" onClick={()=>{setForm({name:c.name,father:c.father,phone:c.phone,valveNo:c.valve,conn:c.conn,address:c.address||"",status:c.status||"active",connDate:c.connDate||"",deposit:c.deposit||0,notes:c.notes||""});setModal("editC");}}>✏️</button>
+            <button className="B Br Bs" onClick={()=>delCust(c.id)}>🗑</button>
+          </div>
+        </div>
+        <div style={{display:"flex",gap:16,marginTop:10,paddingTop:10,borderTop:"1px solid var(--b)"}}>
+          <div><div style={{fontSize:16,fontWeight:800,color:"var(--g)"}}>₹{totalPaid.toLocaleString()}</div><div style={{fontSize:9,color:"var(--m)"}}>TOTAL PAID</div></div>
+          {totalDue>0&&<div><div style={{fontSize:16,fontWeight:800,color:"var(--r)"}}>₹{totalDue.toLocaleString()}</div><div style={{fontSize:9,color:"var(--m)"}}>TOTAL DUE</div></div>}
         </div>
       </div>
-      <YB v={year} fn={setYear}/>
-      <div style={{fontSize:11,color:"var(--m)",marginBottom:6}}>₹{rt(year)}/mo • {am.length} months active • Paid: <strong style={{color:"var(--g)"}}>{pd.length}</strong> • Due: <strong style={{color:"var(--r)"}}>{up.length} (₹{up.length*rt(year)})</strong></div>
 
-      {/* Only show active months */}
+      <YB v={year} fn={y=>{setYear(y);setPayM([]);setAdvMode(false);}}/>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+        <div style={{fontSize:11,color:"var(--m)"}}>₹{rt(year)}/mo • Paid: <strong style={{color:"var(--g)"}}>{pd.length}</strong> • Due: <strong style={{color:"var(--r)"}}>{up.length} (₹{up.length*rt(year)})</strong></div>
+        {year>=CY&&<button className={`B Bs ${advMode?"Bp":"Bg"}`} style={{fontSize:10}} onClick={()=>setAdvMode(!advMode)}>{advMode?"📅 Normal":"⏩ Advance"}</button>}
+      </div>
+
       <div style={{display:"grid",gridTemplateColumns:`repeat(${am.length<=6?3:4},1fr)`,gap:5,marginBottom:12}}>
-        {am.map(i=>{const isPaid=!!p[i];return <button key={i} className="B" onClick={()=>togPay(c.id,i)} style={{flexDirection:"column",gap:1,padding:"8px 3px",borderRadius:8,background:isPaid?"var(--gl)":"var(--rl)",color:isPaid?"var(--g)":"var(--r)",border:isPaid?"2px solid var(--g)":"2px solid transparent",fontSize:11}}>
-          <span style={{fontSize:9,fontWeight:700}}>{ME[i]}</span><span style={{fontSize:14}}>{isPaid?"✅":"❌"}</span>
-        </button>;})}
+        {am.map(i=>{const isPaid=!!p[i];const isFuture=year===CY&&i>CM;
+          return <button key={i} className="B" onClick={()=>togPay(c.id,i)} style={{flexDirection:"column",gap:1,padding:"8px 3px",borderRadius:8,
+            background:isPaid?"var(--gl)":"var(--rl)",color:isPaid?"var(--g)":"var(--r)",
+            border:isPaid?"2px solid var(--g)":isFuture?"2px dashed var(--b)":"2px solid transparent",fontSize:11}}>
+            <span style={{fontSize:9,fontWeight:700}}>{ME[i]}</span>
+            <span style={{fontSize:14}}>{isPaid?"✅":isFuture?"⬜":"❌"}</span>
+            {isFuture&&!isPaid&&<span style={{fontSize:8,color:"var(--m)"}}>adv</span>}
+          </button>;})}
       </div>
 
-      {/* Collect unpaid */}
-      {up.length>0&&<div className="C" style={{marginBottom:8}}>
+      {up.length>0&&c.status==="active"&&<div className="C" style={{marginBottom:8}}>
         <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>💰 Collect Payment</h4>
-        <p style={{fontSize:10,color:"var(--m)",marginBottom:6}}>Select months to collect:</p>
         <div style={{display:"flex",flexWrap:"wrap",gap:3,marginBottom:8}}>
-          {up.map(i=>{const sel=payM.includes(i);return <button key={i} className={`B Bs ${sel?"Bp":"Bg"}`} onClick={()=>setPayM(prev=>sel?prev.filter(x=>x!==i):[...prev,i])}>{ME[i]}</button>;})}
-          <button className="B Bs Ba" onClick={()=>setPayM([...up])} style={{fontSize:10}}>Select All</button>
+          {up.map(i=>{const sel=payM.includes(i);return <button key={i} className={`B Bs ${sel?"Bp":"Bg"}`} onClick={()=>setPayM(prev=>sel?prev.filter(x=>x!==i):[...prev,i])}>{ME[i]}{year===CY&&i>CM?" ⏩":""}</button>;})}
+          <button className="B Bs Ba" onClick={()=>setPayM([...up])} style={{fontSize:10}}>All</button>
         </div>
-        {payM.length>0&&<div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--al)",borderRadius:10,padding:"8px 12px",flexWrap:"wrap",gap:6}}>
-          <div><div style={{fontSize:12,fontWeight:600}}>{payM.length} × ₹{rt(year)}</div><div style={{fontSize:18,fontWeight:800,color:"var(--a)"}}>₹{payM.length*rt(year)}</div></div>
-          <button className="B Ba" onClick={collect}>🧾 Collect & Receipt</button>
-        </div>}
+        {payM.length>0&&<>
+          <div style={{display:"flex",gap:6,marginBottom:8}}>
+            {["cash","upi","cheque"].map(m=><button key={m} className={`B Bs ${payMethod===m?"Bp":"Bg"}`} style={{flex:1,fontSize:12,textTransform:"capitalize"}} onClick={()=>setPayMethod(m)}>
+              {m==="cash"?"💵":m==="upi"?"📱":"🏦"} {m}
+            </button>)}
+          </div>
+          <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",background:"var(--al)",borderRadius:10,padding:"8px 12px",flexWrap:"wrap",gap:6}}>
+            <div><div style={{fontSize:12,fontWeight:600}}>{payM.length} × ₹{rt(year)}</div><div style={{fontSize:18,fontWeight:800,color:"var(--a)"}}>₹{payM.length*rt(year)}</div></div>
+            <button className="B Ba" onClick={collect}>🧾 Collect & Receipt</button>
+          </div>
+        </>}
       </div>}
       {up.length===0&&<div style={{background:"var(--gl)",borderRadius:10,padding:12,textAlign:"center",marginBottom:8,color:"var(--g)",fontWeight:600,fontSize:13}}>✅ All months paid for {year}!</div>}
 
-      {/* Receipts */}
       <div className="C" style={{marginBottom:8}}>
         <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>🧾 Receipts ({cR.length})</h4>
         {cR.length===0?<p style={{fontSize:11,color:"var(--m)"}}>None yet</p>:
           <div style={{display:"flex",flexDirection:"column",gap:3}}>
             {cR.slice(0,10).map(r=><div key={r.no} onClick={()=>{setRecD(r);setModal("receipt");}} style={{display:"flex",justifyContent:"space-between",padding:"6px 8px",background:"var(--bg)",borderRadius:6,cursor:"pointer",fontSize:12}}>
-              <div><strong>#{String(r.no).padStart(6,"0")}</strong> <span style={{color:"var(--m)",fontSize:10}}>{new Date(r.date).toLocaleDateString("hi-IN")}</span></div>
+              <div><strong>#{String(r.no).padStart(6,"0")}</strong> <span style={{color:"var(--m)",fontSize:10}}>{new Date(r.date).toLocaleDateString("hi-IN")} {r.method==="upi"?"📱":r.method==="cheque"?"🏦":"💵"}</span></div>
               <div><span style={{fontSize:10,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{String(r.year).slice(2)}</span> <strong style={{color:"var(--g)"}}>₹{r.amt}</strong></div>
             </div>)}
           </div>}
       </div>
 
-      {/* Lifetime */}
       {aY.length>0&&<div className="C">
-        <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>📊 History</h4>
-        {aY.map(y=>{const yp=c.payments[y]||{};const pc=Object.values(yp).filter(Boolean).length;const tot=y==CY?am.length:12;
+        <h4 style={{fontSize:13,marginBottom:6,color:"var(--pd)"}}>📊 Payment History</h4>
+        {aY.map(y=>{const yp=c.payments[y]||{};const pc=Object.values(yp).filter(Boolean).length;const tot=parseInt(y)<CY?12:CM+1;
           return <div key={y} style={{display:"flex",alignItems:"center",gap:8,padding:"4px 0",borderBottom:"1px solid var(--b)"}}>
             <strong style={{minWidth:36,fontSize:12}}>{y}</strong>
-            <div style={{flex:1,background:"var(--bg)",borderRadius:5,height:14,overflow:"hidden"}}><div style={{height:"100%",width:`${(pc/tot)*100}%`,background:"var(--g)",borderRadius:5}}/></div>
+            <div style={{flex:1,background:"var(--bg)",borderRadius:5,height:14,overflow:"hidden"}}>
+              <div style={{height:"100%",width:`${(pc/tot)*100}%`,background:pc===tot?"var(--g)":"var(--a)",borderRadius:5}}/>
+            </div>
             <span style={{fontSize:11,fontWeight:600,minWidth:36,textAlign:"right"}}>{pc}/{tot}</span>
-            <span style={{fontSize:10,color:"var(--g)",fontWeight:600,minWidth:48,textAlign:"right"}}>₹{pc*rt(parseInt(y))}</span>
+            <span style={{fontSize:10,color:pc<tot?"var(--r)":"var(--g)",fontWeight:600,minWidth:48,textAlign:"right"}}>₹{pc*rt(parseInt(y))}</span>
           </div>;})}
       </div>}
     </div>;
   };
 
-  /* ─── RECEIPTS TAB ─── */
-  const RView=()=>{const recs=D.receipts.sort((a,b)=>b.no-a.no);
+  /* ─── RECEIPTS VIEW ─── */
+  const RView=()=>{
+    const totals={cash:0,upi:0,cheque:0};
+    D.receipts.forEach(r=>{const m=r.method||"cash";totals[m]=(totals[m]||0)+r.amt;});
+    const recs=D.receipts.filter(r=>rcptFilter==="all"||(r.method||"cash")===rcptFilter).sort((a,b)=>b.no-a.no);
     return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
-      <h2 style={{fontSize:17,color:"var(--pd)",marginBottom:2}}>🧾 All Receipts</h2>
-      <p style={{fontSize:11,color:"var(--m)",marginBottom:8}}>{recs.length} total</p>
+      <h2 style={{fontSize:17,color:"var(--pd)",marginBottom:8}}>🧾 Receipts</h2>
+      <div style={{display:"flex",gap:6,marginBottom:8,flexWrap:"wrap"}}>
+        <div style={{fontSize:11,padding:"4px 8px",background:"var(--gl)",borderRadius:6,color:"var(--g)"}}>💵 ₹{totals.cash.toLocaleString()}</div>
+        <div style={{fontSize:11,padding:"4px 8px",background:"var(--pl)",borderRadius:6,color:"var(--p)"}}>📱 ₹{totals.upi.toLocaleString()}</div>
+        <div style={{fontSize:11,padding:"4px 8px",background:"var(--al)",borderRadius:6,color:"var(--a)"}}>🏦 ₹{totals.cheque.toLocaleString()}</div>
+      </div>
+      <div style={{display:"flex",gap:4,marginBottom:8}}>
+        {["all","cash","upi","cheque"].map(m=><button key={m} className={`B Bs ${rcptFilter===m?"Bp":"Bg"}`} style={{padding:"3px 9px",fontSize:11,textTransform:"capitalize"}} onClick={()=>setRcptFilter(m)}>{m}</button>)}
+      </div>
       {recs.length===0?<div className="C" style={{textAlign:"center",padding:20,color:"var(--m)"}}>None</div>:
         <div style={{display:"flex",flexDirection:"column",gap:4}}>
-          {recs.slice(0,50).map(r=><div key={r.no} className="C" style={{padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");}}>
-            <div><div style={{fontWeight:700,fontSize:13}}>#{String(r.no).padStart(6,"0")}</div><div style={{fontSize:10,color:"var(--m)"}}>{r.name} • V{r.valve}</div></div>
-            <div style={{textAlign:"right"}}><div style={{fontWeight:700,color:"var(--g)"}}>₹{r.amt}</div><div style={{fontSize:9,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{ String(r.year).slice(2)} • {new Date(r.date).toLocaleDateString("hi-IN")}</div></div>
+          {recs.slice(0,60).map(r=><div key={r.no} className="C" style={{padding:"10px 12px",cursor:"pointer",display:"flex",justifyContent:"space-between",alignItems:"center"}} onClick={()=>{setRecD(r);setCid(r.cid);setModal("receipt");}}>
+            <div>
+              <div style={{fontWeight:700,fontSize:13}}>#{String(r.no).padStart(6,"0")} <span style={{fontSize:12}}>{r.method==="upi"?"📱":r.method==="cheque"?"🏦":"💵"}</span></div>
+              <div style={{fontSize:10,color:"var(--m)"}}>{r.name} • V{r.valve}</div>
+            </div>
+            <div style={{textAlign:"right"}}>
+              <div style={{fontWeight:700,color:"var(--g)"}}>₹{r.amt}</div>
+              <div style={{fontSize:9,color:"var(--m)"}}>{r.months.map(m=>ME[m]).join(",")}'{String(r.year).slice(2)} • {new Date(r.date).toLocaleDateString("hi-IN")}</div>
+            </div>
           </div>)}
         </div>}
+    </div>;
+  };
+
+  /* ─── REPORTS ─── */
+  const Reports=()=>{
+    const duesList=activeC.map(c=>{
+      const ams=activeMonths(rYear);const paid=Object.values(c.payments?.[rYear]||{}).filter(Boolean).length;
+      return{...c,dueMo:ams.length-paid,dueAmt:(ams.length-paid)*rt(rYear),paidMo:paid};
+    }).filter(c=>c.dueMo>0).sort((a,b)=>b.dueAmt-a.dueAmt);
+
+    const monthlyData=ME.map((m,i)=>{
+      const recs=D.receipts.filter(r=>r.year===rYear&&r.months.includes(i));
+      const byM={cash:0,upi:0,cheque:0};
+      recs.forEach(r=>{const share=r.amt/r.months.length;byM[r.method||"cash"]=(byM[r.method||"cash"]||0)+share;});
+      return{month:m,total:Object.values(byM).reduce((s,v)=>s+v,0),count:recs.length,...byM};
+    });
+
+    return <div style={{maxWidth:900,margin:"0 auto",padding:"10px 14px"}}>
+      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+        <h2 style={{fontSize:17,color:"var(--pd)"}}>📊 Reports</h2>
+        <button className="B Bs Ba" onClick={()=>window.print()}>🖨️ Print</button>
+      </div>
+      <YB v={rYear} fn={setRYear}/>
+      <div style={{display:"flex",gap:4,marginBottom:12,flexWrap:"wrap"}}>
+        {[["dues","📋 Dues List"],["monthly","📅 Monthly"],["valvewise","🔧 Valve Summary"]].map(([k,l])=>
+          <button key={k} className={`B Bs ${rType===k?"Bp":"Bg"}`} onClick={()=>setRType(k)}>{l}</button>
+        )}
+      </div>
+
+      <div id="reportPrint">
+        <div style={{marginBottom:8,fontSize:11,color:"var(--m)"}}>{D.biz.name} — {rType==="dues"?"Dues List":rType==="monthly"?"Monthly Collection":"Valve Summary"} {rYear}</div>
+
+        {rType==="dues"&&<>
+          <div style={{display:"flex",justifyContent:"space-between",marginBottom:8,flexWrap:"wrap",gap:4}}>
+            <strong style={{fontSize:14,color:"var(--pd)"}}>Dues — {rYear}</strong>
+            <span style={{fontSize:12,fontWeight:700,color:"var(--r)"}}>₹{duesList.reduce((s,c)=>s+c.dueAmt,0).toLocaleString()} • {duesList.length} customers</span>
+          </div>
+          {duesList.length===0?
+            <div className="C" style={{textAlign:"center",padding:20,color:"var(--g)"}}>✅ No dues for {rYear}!</div>:
+            <div style={{display:"flex",flexDirection:"column",gap:4}}>
+              {duesList.map(c=><div key={c.id} style={{display:"flex",justifyContent:"space-between",padding:"8px 12px",background:"var(--c)",borderRadius:8,borderLeft:"3px solid var(--r)"}}>
+                <div>
+                  <strong>C-{c.id} {c.name}</strong>
+                  <div style={{fontSize:10,color:"var(--m)"}}>V{c.valve} • #{c.conn}{c.phone&&` • 📞${c.phone}`}</div>
+                  {c.address&&<div style={{fontSize:10,color:"var(--m)"}}>📍 {c.address}</div>}
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontWeight:800,color:"var(--r)"}}>₹{c.dueAmt}</div>
+                  <div style={{fontSize:10,color:"var(--m)"}}>{c.dueMo} months</div>
+                </div>
+              </div>)}
+            </div>}
+        </>}
+
+        {rType==="monthly"&&<>
+          <strong style={{fontSize:14,color:"var(--pd)",display:"block",marginBottom:8}}>Monthly Collection — {rYear}</strong>
+          <div style={{display:"flex",flexDirection:"column",gap:4}}>
+            {monthlyData.map((m,i)=>{if(rYear===CY&&i>CM&&m.total===0)return null;
+              return <div key={i} style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",background:"var(--c)",borderRadius:8}}>
+                <div style={{minWidth:34,fontSize:13,fontWeight:700}}>{m.month}</div>
+                <div style={{flex:1,background:"var(--bg)",borderRadius:5,height:16,overflow:"hidden"}}>
+                  <div style={{height:"100%",width:`${Math.min((m.total/(rt(rYear)*(activeC.length||1)))*100,100)}%`,background:"var(--g)",borderRadius:5}}/>
+                </div>
+                <div style={{textAlign:"right",minWidth:80}}>
+                  {m.total>0?<>
+                    <div style={{fontSize:12,fontWeight:700,color:"var(--g)"}}>₹{Math.round(m.total).toLocaleString()}</div>
+                    <div style={{fontSize:9,color:"var(--m)"}}>💵{Math.round(m.cash)} 📱{Math.round(m.upi)} 🏦{Math.round(m.cheque)}</div>
+                  </>:<div style={{fontSize:12,color:"var(--m)"}}>—</div>}
+                </div>
+              </div>;
+            })}
+          </div>
+        </>}
+
+        {rType==="valvewise"&&<>
+          <strong style={{fontSize:14,color:"var(--pd)",display:"block",marginBottom:8}}>Valve Summary — {rYear}</strong>
+          <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(200px,1fr))",gap:8}}>
+            {allV.map(v=>{
+              const cs=vc(v).filter(c=>c.status==="active");
+              const ams=activeMonths(rYear);
+              const collected=cs.reduce((s,c)=>s+Object.values(c.payments?.[rYear]||{}).filter(Boolean).length*rt(rYear),0);
+              const total=cs.length*ams.length*rt(rYear);
+              return <div key={v} className="C" style={{borderTop:`3px solid ${collected<total?"var(--r)":"var(--g)"}`}}>
+                <div style={{fontSize:18,fontWeight:800,color:"var(--p)"}}>V-{v}</div>
+                <div style={{fontSize:11,color:"var(--m)",marginBottom:4}}>{cs.length} active connections</div>
+                <div style={{fontSize:12,fontWeight:700,color:"var(--g)"}}>₹{collected.toLocaleString()} collected</div>
+                {collected<total&&<div style={{fontSize:12,fontWeight:700,color:"var(--r)"}}>₹{(total-collected).toLocaleString()} due</div>}
+              </div>;
+            })}
+          </div>
+        </>}
+      </div>
     </div>;
   };
 
   /* ─── RENDER ─── */
   return <div className="app-wrap">
     <div className="nav">
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
+      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
         {(tab==="valve"||tab==="cust")&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={()=>{if(tab==="cust"){setCid(null);setTab(valve?"valve":"dash");}else{setValve(null);setTab("dash");}}}>←</button>}
         <h1>💧 Water Supply</h1>
       </div>
-      <div style={{display:"flex",alignItems:"center",gap:6}}>
-        {driveStatus==='idle'&&!GDR_CID.includes('PASTE')&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={connectDrive}>☁️</button>}
+      <div style={{display:"flex",alignItems:"center",gap:5}}>
+        <input className="srch" placeholder="🔍 Search…" value={search} onChange={e=>setSearch(e.target.value)}/>
+        {undoCount>0&&<button className="B Bs" style={{background:"#fbbf24",color:"#000",padding:"4px 8px",fontSize:12}} onClick={undo} title="Undo last change">↩</button>}
+        {driveStatus==='idle'&&!GDR_CID.includes('PASTE')&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={connectDrive}>☁️</button>}
         {driveStatus==='connecting'&&<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>☁️…</span>}
         {driveStatus==='syncing'&&<span style={{fontSize:11,color:"rgba(255,255,255,.5)"}}>☁️↑</span>}
-        {driveStatus==='synced'&&<span style={{fontSize:13,color:"#4ade80",cursor:"pointer"}} title="Connected to Google Drive — tap to disconnect" onClick={disconnectDrive}>☁️✓</span>}
-        {driveStatus==='error'&&<button className="B Bs" style={{background:"#c03028",color:"#fff",fontSize:11}} onClick={connectDrive}>☁️ retry</button>}
-        <button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onSave}>📤</button>
+        {driveStatus==='synced'&&<span style={{fontSize:13,color:"#4ade80",cursor:"pointer"}} title="Google Drive connected — tap to disconnect" onClick={disconnectDrive}>☁️✓</span>}
+        {driveStatus==='error'&&<button className="B Bs" style={{background:"#c03028",color:"#fff",fontSize:11,padding:"4px 8px"}} onClick={connectDrive}>☁️!</button>}
+        <button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={onSave} title="Export Excel">📤</button>
       </div>
     </div>
 
-
     <div className="main-scroll">
-      {tab==="dash"&&<Dash/>}
-      {tab==="collect"&&<Collect/>}
-      {tab==="valve"&&<VView/>}
-      {tab==="cust"&&<CView/>}
-      {tab==="receipts"&&<RView/>}
+      {search.trim()?<SearchView/>:
+       tab==="dash"?<Dash/>:
+       tab==="collect"?<Collect/>:
+       tab==="valve"?<VView/>:
+       tab==="cust"?<CView/>:
+       tab==="receipts"?<RView/>:
+       tab==="reports"?<Reports/>:null}
     </div>
 
-    {/* Bottom Nav */}
-    {tab!=="cust"&&tab!=="valve"&&<div className="btm">
+    {!search.trim()&&tab!=="cust"&&tab!=="valve"&&<div className="btm">
       <button className={`bt ${tab==="dash"?"on":""}`} onClick={()=>setTab("dash")}><span className="ico">📊</span>Dashboard</button>
       <button className={`bt ${tab==="collect"?"on":""}`} onClick={()=>setTab("collect")}><span className="ico">💰</span>Collect</button>
       <button className={`bt ${tab==="receipts"?"on":""}`} onClick={()=>setTab("receipts")}><span className="ico">🧾</span>Receipts</button>
+      <button className={`bt ${tab==="reports"?"on":""}`} onClick={()=>setTab("reports")}><span className="ico">📋</span>Reports</button>
     </div>}
 
-    {/* ─── MODALS ─── */}
+    {/* MODALS */}
     <Modal open={modal==="addC"} onClose={()=>setModal(null)} title="➕ Add Customer">
-      <div className="fr"><Fld label="Name / नाम *"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name"/></Fld><Fld label="Father / पिता"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})} placeholder="s/o d/o"/></Fld></div>
-      <div className="fr"><Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld><Fld label="Conn No (auto)"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld></div>
-      <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
+      <div className="fr">
+        <Fld label="Name *"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name"/></Fld>
+        <Fld label="Father / पिता"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})} placeholder="s/o d/o"/></Fld>
+      </div>
+      <div className="fr">
+        <Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
+        <Fld label="Conn No (auto)"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld>
+      </div>
+      <div className="fr">
+        <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
+        <Fld label="Status"><select className="I" value={form.status||"active"} onChange={e=>setForm({...form,status:e.target.value})}>
+          <option value="active">Active</option><option value="inactive">Inactive</option><option value="disconnected">Disconnected</option>
+        </select></Fld>
+      </div>
+      <Fld label="Address / पता"><input className="I" value={form.address||""} onChange={e=>setForm({...form,address:e.target.value})} placeholder="House / Street / Area"/></Fld>
+      <div className="fr">
+        <Fld label="Connection Date"><input className="I" type="date" value={form.connDate||""} onChange={e=>setForm({...form,connDate:e.target.value})}/></Fld>
+        <Fld label="Security Deposit ₹"><input className="I" type="number" value={form.deposit||""} onChange={e=>setForm({...form,deposit:e.target.value})}/></Fld>
+      </div>
+      <Fld label="Notes / नोट"><input className="I" value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})} placeholder="Any special note…"/></Fld>
       <button className="B Bp" style={{width:"100%",marginTop:4}} onClick={addCust}>Add Customer</button>
     </Modal>
 
-    <Modal open={modal==="editC"} onClose={()=>setModal(null)} title="✏️ Edit">
-      <div className="fr"><Fld label="Name"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></Fld><Fld label="Father"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})}/></Fld></div>
-      <div className="fr"><Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld><Fld label="Conn"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld></div>
-      <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
-      <button className="B Bp" style={{width:"100%",marginTop:4}} onClick={editCust}>Save</button>
+    <Modal open={modal==="editC"} onClose={()=>setModal(null)} title="✏️ Edit Customer">
+      <div className="fr">
+        <Fld label="Name"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></Fld>
+        <Fld label="Father"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})}/></Fld>
+      </div>
+      <div className="fr">
+        <Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
+        <Fld label="Conn No"><input className="I" value={form.conn||""} onChange={e=>setForm({...form,conn:e.target.value})}/></Fld>
+      </div>
+      <div className="fr">
+        <Fld label="Phone"><input className="I" value={form.phone||""} onChange={e=>setForm({...form,phone:e.target.value})}/></Fld>
+        <Fld label="Status"><select className="I" value={form.status||"active"} onChange={e=>setForm({...form,status:e.target.value})}>
+          <option value="active">Active</option><option value="inactive">Inactive</option><option value="disconnected">Disconnected</option>
+        </select></Fld>
+      </div>
+      <Fld label="Address"><input className="I" value={form.address||""} onChange={e=>setForm({...form,address:e.target.value})}/></Fld>
+      <div className="fr">
+        <Fld label="Connection Date"><input className="I" type="date" value={form.connDate||""} onChange={e=>setForm({...form,connDate:e.target.value})}/></Fld>
+        <Fld label="Security Deposit ₹"><input className="I" type="number" value={form.deposit||""} onChange={e=>setForm({...form,deposit:e.target.value})}/></Fld>
+      </div>
+      <Fld label="Notes"><input className="I" value={form.notes||""} onChange={e=>setForm({...form,notes:e.target.value})}/></Fld>
+      <button className="B Bp" style={{width:"100%",marginTop:4}} onClick={editCust}>Save Changes</button>
     </Modal>
 
     <Modal open={modal==="receipt"} onClose={()=>{setModal(null);setRecD(null);}} title="🧾 Receipt">
@@ -573,7 +956,7 @@ function App(){
 
     <Modal open={modal==="import"} onClose={()=>setModal(null)} title="📥 Bulk Import" wide>
       <div style={{background:"var(--pl)",borderRadius:8,padding:10,marginBottom:10,fontSize:11,lineHeight:1.7}}>
-        One per line: <code style={{background:"#fff",padding:"1px 4px",borderRadius:3}}>Name, Father, Phone, ConnNo</code> (only Name required)
+        One per line: <code style={{background:"#fff",padding:"1px 4px",borderRadius:3}}>Name, Father, Phone, ConnNo</code>
       </div>
       <Fld label="To Valve"><select className="I" value={impV} onChange={e=>setImpV(e.target.value)}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
       <Fld label="Paste Data"><textarea className="I" rows={6} value={impTxt} onChange={e=>setImpTxt(e.target.value)} placeholder={"राजेश, राम पाल, 9876543210\nसुरेश, मोहन लाल"} style={{resize:"vertical",fontFamily:"monospace",fontSize:11}}/></Fld>
@@ -582,7 +965,7 @@ function App(){
 
     <Modal open={modal==="rates"} onClose={()=>setModal(null)} title="💰 Yearly Rates">
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:6}}>
-        {Array.from({length:CY-2014},(_,i)=>2015+i).map(y=>
+        {Array.from({length:CY-2014+1},(_,i)=>2015+i).map(y=>
           <Fld key={y} label={y} s={{marginBottom:4}}><input className="I" type="number" value={D.rates[y]||""} style={{padding:"7px 8px",fontSize:13}} onChange={e=>{D.rates[y]=parseInt(e.target.value)||0;upd(D);}}/></Fld>
         )}
       </div>
@@ -593,8 +976,11 @@ function App(){
       <Fld label="Phone"><input className="I" value={D.biz.phone} onChange={e=>{D.biz.phone=e.target.value;upd(D);}}/></Fld>
       <Fld label="Address"><input className="I" value={D.biz.addr} onChange={e=>{D.biz.addr=e.target.value;upd(D);}}/></Fld>
       <div style={{borderTop:"1px solid var(--b)",paddingTop:10,marginTop:10,display:"flex",flexDirection:"column",gap:6}}>
-        <label className="B Ba" style={{width:"100%",cursor:"pointer"}}><span>📂 Load Different File</span><input type="file" accept=".xlsx,.xls" onChange={e=>{if(dirty&&!confirm("Unsaved changes lost?"))return;onLoad(e);setModal(null);}} style={{display:"none"}}/></label>
-        <button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("⚠️ DELETE ALL?")){const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");setModal(null);}}}>🗑 Reset</button>
+        {!pinExists()
+          ?<button className="B Bg" style={{width:"100%"}} onClick={()=>{setModal(null);setPinStatus('setup');}}>🔒 Set PIN Lock</button>
+          :<button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("Remove PIN lock?"))pinRemove();}}>🔓 Remove PIN</button>}
+        <label className="B Ba" style={{width:"100%",cursor:"pointer"}}>📂 Load Excel File<input type="file" accept=".xlsx,.xls" onChange={e=>{if(dirty&&!confirm("Unsaved changes lost?"))return;onLoad(e);setModal(null);}} style={{display:"none"}}/></label>
+        <button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("⚠️ DELETE ALL DATA? This cannot be undone.")){const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");setModal(null);}}}>🗑 Reset All Data</button>
       </div>
     </Modal>
   </div>;
