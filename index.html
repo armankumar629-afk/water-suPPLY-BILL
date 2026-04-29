@@ -209,6 +209,20 @@ function dlXL(D){XLSX.writeFile(writeXL(D),`WaterSupply_${new Date().toISOString
 function autoSave(D){try{localStorage.setItem(KEY,JSON.stringify(D));}catch{}}
 function autoLoad(){try{const s=localStorage.getItem(KEY);return s?JSON.parse(s):null;}catch{return null;}}
 
+/* ─── TRANSLITERATE English → Hindi ─── */
+async function toHindi(text){
+  if(!text?.trim())return text||"";
+  const words=text.trim().split(/\s+/);
+  const out=await Promise.all(words.map(async w=>{
+    try{
+      const r=await fetch(`https://inputtools.google.com/request?text=${encodeURIComponent(w)}&itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=test`);
+      const d=await r.json();
+      return d[0]==="SUCCESS"&&d[1]?.[0]?.[1]?.[0]||w;
+    }catch{return w;}
+  }));
+  return out.join(" ");
+}
+
 /* ─── GOOGLE DRIVE SYNC ─── */
 const GDR_CID='PASTE_YOUR_CLIENT_ID_HERE';
 const GDR_SCOPE='https://www.googleapis.com/auth/drive.appdata';
@@ -370,6 +384,7 @@ function App(){
   const[fontSize,setFontSize]=useState(localStorage.getItem('ws-fs')||'medium');
   const[toast,setToast]=useState(null);
   const[backupReminder,setBackupReminder]=useState(false);
+  const[translit,setTranslit]=useState(false);
   const tcRef=useRef(null);
   const syncTimer=useRef(null);
   const undoStack=useRef([]);
@@ -982,10 +997,20 @@ function App(){
     </div>}
 
     {/* MODALS */}
+    {/* ─── TRANSLITERATE HELPER ─── */}
+    {(()=>{
+      const HBtn=(field)=><button type="button" className="B Bs Bg" disabled={translit} title="Convert to Hindi" style={{flexShrink:0,fontSize:13,padding:"6px 8px"}} onClick={async()=>{
+        setTranslit(true);
+        try{const h=await toHindi(form[field]||"");setForm(f=>({...f,[field]:h}));}
+        catch{showToast("⚠️ Conversion failed — check internet");}
+        setTranslit(false);
+      }}>{translit?"⏳":"🔄"}</button>;
+
+    return <>
     <Modal open={modal==="addC"} onClose={()=>setModal(null)} title="➕ Add Customer">
       <div className="fr">
-        <Fld label="Name *"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Name"/></Fld>
-        <Fld label="Father / पिता"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})} placeholder="s/o d/o"/></Fld>
+        <Fld label="Name *"><div style={{display:"flex",gap:6}}><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})} placeholder="Type in English…"/>{HBtn("name")}</div></Fld>
+        <Fld label="Father / पिता"><div style={{display:"flex",gap:6}}><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})} placeholder="s/o d/o"/>{HBtn("father")}</div></Fld>
       </div>
       <div className="fr">
         <Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
@@ -1008,8 +1033,8 @@ function App(){
 
     <Modal open={modal==="editC"} onClose={()=>setModal(null)} title="✏️ Edit Customer">
       <div className="fr">
-        <Fld label="Name"><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/></Fld>
-        <Fld label="Father"><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})}/></Fld>
+        <Fld label="Name"><div style={{display:"flex",gap:6}}><input className="I" value={form.name||""} onChange={e=>setForm({...form,name:e.target.value})}/>{HBtn("name")}</div></Fld>
+        <Fld label="Father"><div style={{display:"flex",gap:6}}><input className="I" value={form.father||""} onChange={e=>setForm({...form,father:e.target.value})}/>{HBtn("father")}</div></Fld>
       </div>
       <div className="fr">
         <Fld label="Valve"><select className="I" value={form.valveNo||1} onChange={e=>setForm({...form,valveNo:e.target.value})}>{allV.map(v=><option key={v} value={v}>V-{v}</option>)}</select></Fld>
@@ -1086,6 +1111,7 @@ function App(){
         <button className="B Br" style={{width:"100%"}} onClick={()=>{if(confirm("⚠️ DELETE ALL DATA? This cannot be undone.")){const d=freshD();setD(d);setDirty(false);autoSave(d);setTab("dash");setModal(null);}}}>🗑 Reset All Data</button>
       </div>
     </Modal>
+    </>; })()}
   </div>;
 }
 
