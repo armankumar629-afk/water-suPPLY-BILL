@@ -1,4 +1,4 @@
-const CACHE = 'ws-app-v1';
+const CACHE = 'ws-app-v2';
 const CORE = [
   '/water-suPPLY-BILL/',
   '/water-suPPLY-BILL/index.html',
