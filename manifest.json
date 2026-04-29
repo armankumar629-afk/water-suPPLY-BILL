@@ -1,0 +1,19 @@
+{
+  "name": "Water Supply Manager",
+  "short_name": "Water Bill",
+  "description": "वॉटर सप्लाई बिलिंग सिस्टम",
+  "start_url": "/water-suPPLY-BILL/",
+  "scope": "/water-suPPLY-BILL/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#084433",
+  "theme_color": "#084433",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

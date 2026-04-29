@@ -11,6 +11,7 @@
 <title>💧 Water Supply Manager</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💧</text></svg>">
 <link rel="apple-touch-icon" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMjggMTI4Ij48cmVjdCB3aWR0aD0iMTI4IiBoZWlnaHQ9IjEyOCIgcng9IjI0IiBmaWxsPSIjMDg0NDMzIi8+PHRleHQgeD0iNjQiIHk9IjgwIiBmb250LXNpemU9IjU2IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmaWxsPSIjZmZmIj7wn5KSIPA8L3RleHQ+PC9zdmc+">
+<link rel="manifest" href="manifest.json">
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;600&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -60,6 +61,7 @@ input,select,textarea,button{font-family:inherit}
 </head>
 <body>
 <div id="app"></div>
+<script>if('serviceWorker' in navigator){window.addEventListener('load',()=>{navigator.serviceWorker.register('./sw.js').catch(()=>{});});}</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -170,7 +172,7 @@ function Rcpt({r,c,biz,rate}){
 
 /* ─── MAIN APP ─── */
 function App(){
-  const[D,setD]=useState(null);
+  const[D,setD]=useState(()=>autoLoad());
   const[dirty,setDirty]=useState(false);
   const[tab,setTab]=useState("dash");
   const[valve,setValve]=useState(null);
@@ -184,7 +186,6 @@ function App(){
   const[impTxt,setImpTxt]=useState("");
   const[impV,setImpV]=useState(1);
 
-  useEffect(()=>{const h=e=>{if(dirty){e.preventDefault();e.returnValue="";}};window.addEventListener("beforeunload",h);return()=>window.removeEventListener("beforeunload",h);},[dirty]);
 
   const upd=useCallback(nd=>{const c={...nd};setD(c);setDirty(true);autoSave(c);},[]);
   const rt=(y)=>D?.rates?.[y]||300;
@@ -236,7 +237,7 @@ function App(){
           <button className="B Bp" style={{fontSize:15,padding:"14px 20px",width:"100%"}} onClick={onNew}>✨ Start New</button>
           {hasBackup&&<button className="B" style={{fontSize:13,padding:"10px 16px",width:"100%",background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onRecover}>🔄 Recover Last Session</button>}
         </div>
-        <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data saved in Excel file on YOUR device.<br/>Auto-backup in browser between saves.</p>
+        <p style={{color:"rgba(255,255,255,.3)",fontSize:10,marginTop:20,lineHeight:1.5}}>Data auto-saved on this device — no manual saving needed.<br/>Use Export to download an Excel backup.</p>
       </div>
     </div>;
   }
@@ -455,10 +456,9 @@ function App(){
         {(tab==="valve"||tab==="cust")&&<button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff",padding:"4px 8px"}} onClick={()=>{if(tab==="cust"){setCid(null);setTab(valve?"valve":"dash");}else{setValve(null);setTab("dash");}}}>←</button>}
         <h1>💧 Water Supply</h1>
       </div>
-      <button className="B Bs" style={{background:dirty?"#ffc107":"rgba(255,255,255,.15)",color:dirty?"#000":"#fff",fontWeight:dirty?800:600}} onClick={onSave}>💾{dirty?" SAVE*":""}</button>
+      <button className="B Bs" style={{background:"rgba(255,255,255,.15)",color:"#fff"}} onClick={onSave}>📤 Export</button>
     </div>
 
-    {dirty&&<div className="save-bar"><span>⚠️ Unsaved</span><button className="B Bs Ba" onClick={onSave}>💾 Save Excel</button></div>}
 
     <div className="main-scroll">
       {tab==="dash"&&<Dash/>}
